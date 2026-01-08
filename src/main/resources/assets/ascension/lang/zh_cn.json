@@ -1,0 +1,87 @@
+{
+  "enchantment.template-mod.life_steal": "生命汲取",
+  "enchantment.template-mod.speed_steal": "速度偷取",
+  "enchantment.template-mod.death_star_cannon": "歼星炮",
+  "enchantment.template-mod.life_force": "生命之力",
+  "enchantment.template-mod.pocket_bucket": "随身水桶",
+  "enchantment.template-mod.pocket_guard": "随身护卫",
+  "enchantment.template-mod.pocket_cat": "随身猫猫",
+
+  "skill.ascension.root": "基础知识",
+  "skill.ascension.root.desc": "一切的开始。",
+
+  "skill.ascension.combat": "战斗入门",
+  "skill.ascension.combat.desc": "目前好像没什么用呢",
+
+  "skill.ascension.survival": "生存技巧",
+  "skill.ascension.survival.desc": "目前好像没什么用呢",
+
+  "skill.ascension.mining": "挖掘技巧",
+  "skill.ascension.mining.desc": "目前好像没什么用呢",
+
+  "skill.ascension.life_steal": "吸血",
+  "skill.ascension.life_steal.desc": "攻击时恢复生命值",
+
+  "skill.ascension.fire_res": "火焰免疫",
+  "skill.ascension.fire_res.desc": "无视火焰伤害，像下界生物一样",
+
+  "skill.ascension.health_boost": "生命提升",
+  "skill.ascension.health_boost.desc": "你将获得额外的2颗心！",
+  "skill.ascension.health_boost.desc.2": "你将获得额外的4颗心！",
+  "skill.ascension.health_boost.desc.3": "你将获得额外的6颗心！",
+  "skill.ascension.health_boost.desc.4": "你将获得额外的8颗心！！",
+  "skill.ascension.health_boost.desc.5": "你将获得额外的10颗心！！！超级耐揍",
+
+  "skill.ascension.rocket_boost": "空中推进",
+  "skill.ascension.rocket_boost.desc": "你可以在空中额外跳跃1次",
+  "skill.ascension.rocket_boost.desc.2": "你可以在空中额外跳跃2次",
+
+  "skill.ascension.charged_jump": "蓄力火箭跳",
+  "skill.ascension.charged_jump.desc": "潜行时可按住跳跃键蓄力，松开跳跃键可以跳的更高更远",
+  "skill.ascension.charged_jump.desc.2": "潜行时可按住跳跃键蓄力，松开跳跃键可以跳的非常高和非常远",
+
+  "skill.ascension.battle_instinct": "战斗本能",
+  "skill.ascension.battle_instinct.desc": "挥舞武器的速度加快",
+  "skill.ascension.battle_instinct.desc.2": "挥舞武器的速度再加快",
+  "skill.ascension.battle_instinct.desc.3": "挥舞武器的速度加到最快",
+
+  "skill.ascension.adrenaline_burst": "肾上腺素爆发",
+  "skill.ascension.adrenaline_burst.desc": "满血时若受到大量伤害，获得伤害吸收和迅捷效果",
+  "skill.ascension.adrenaline_burst.desc.2": "满血时若受到大量伤害，获得更多的伤害吸收和迅捷效果",
+
+  "skill.ascension.hunger_constitution": "饥饿体质",
+  "skill.ascension.hunger_constitution.desc": "饱食度下降时获得伤害吸收",
+  "skill.ascension.hunger_constitution.desc.2": "饱食度下降时获得更多伤害吸收",
+
+  "skill.ascension.hunger_tolerance": "饥饿耐受",
+  "skill.ascension.hunger_tolerance.desc": "只要饱食度不降为0，就可以恢复生命",
+
+  "skill.ascension.hunger_burst": "饥饿爆发",
+  "skill.ascension.hunger_burst.desc": "饱食度降为0时获得迅捷和力量效果",
+  "skill.ascension.hunger_burst.desc.2": "饱食度降为0时获得迅捷和力量效果",
+
+  "skill.ascension.pocket_furnace": "口袋熔炉",
+  "skill.ascension.pocket_furnace.desc": "自动烧制物品栏最后一格的物品，效率较低",
+  "skill.ascension.pocket_furnace.desc.2": "自动烧制物品栏最后一格的物品，效率中等",
+
+  "skill.ascension.swift_move": "迅猛攻势",
+  "skill.ascension.swift_move.desc": "加速",
+  "skill.ascension.swift_move.desc.2": "加速+",
+  "skill.ascension.swift_move.desc.3": "加速++",
+
+  "criterion.ascension.eat_apple": "吃过 %s 个苹果",
+  "criterion.ascension.kill_cow": "击杀 %s 只牛",
+  "criterion.ascension.jump": "跳跃 %s 次",
+  "criterion.ascension.kill_phantom": "击杀 %s 只幻翼",
+  "criterion.ascension.fly_elytra": "使用鞘翅飞行 %s 米",
+
+
+  "gui.ascension.points_remaining": "剩余技能点: %s",
+  "gui.ascension.help_tip": "技能点获取指南",
+  "tooltip.ascension.help.collect": "收集新物品 (白1/黄2/青3/紫4)",
+  "tooltip.ascension.help.food": "品尝新食物 (+2)",
+  "tooltip.ascension.help.explore": "发现新群系 (+2) / 新维度 (+20)",
+  "tooltip.ascension.help.loot": "首次开启遗迹箱子 (+5~20)",
+  "tooltip.ascension.help.kill": "击杀新生物 (普通1/敌对2/BOSS 10)",
+  "tooltip.ascension.help.advancement": "达成成就 (进度5/目标15/挑战45)"
+}

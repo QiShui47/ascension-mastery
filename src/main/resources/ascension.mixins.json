@@ -1,0 +1,24 @@
+{
+	"required": true,
+	"package": "com.qishui48.ascension.mixin",
+	"compatibilityLevel": "JAVA_17",
+	"mixins": [
+		"ModEntityDataMixin",
+		"PlayerDamageMixin",
+		"FallDamageMixin",
+		"PersistentProjectileEntityMixin",
+		"BowItemMixin",
+		"HungerManagerMixin",
+		"PlayerEntityMixin",
+		"PlayerInventoryMixin",
+		"LivingEntityMixin",
+		"LootableContainerBlockEntityMixin",
+		"PlayerAdvancementTrackerMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}
