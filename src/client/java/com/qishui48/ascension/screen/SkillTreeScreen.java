@@ -269,22 +269,29 @@ public class SkillTreeScreen extends Screen {
         Text desc = isMaxed ? skill.getDescription(Math.max(1, currentLevel)) : skill.getDescription(Math.max(1, currentLevel + 1));
         tooltip.add(skill.getName().copy().formatted(Formatting.YELLOW));
         tooltip.add(desc.copy().formatted(Formatting.GRAY));
-        tooltip.add(Text.of("§7等级: §e" + currentLevel + " / " + skill.maxLevel));
 
-        // === [新增] 启用状态提示 ===
+        // 等级显示 (使用翻译键)
+        tooltip.add(Text.translatable("gui.ascension.tooltip.level", currentLevel, skill.maxLevel).formatted(Formatting.GRAY));
+
+        // === 启用状态提示 ===
         if (isUnlocked) {
             if (isSkillDisabled(skill.id)) {
-                tooltip.add(Text.of("§c[已停用] §7(中键点击启用)"));
+                tooltip.add(Text.translatable("gui.ascension.tooltip.status.disabled").formatted(Formatting.RED)
+                        .append(" ")
+                        .append(Text.translatable("gui.ascension.tooltip.hint.enable").formatted(Formatting.GRAY)));
             } else {
-                tooltip.add(Text.of("§a[已启用] §7(中键点击停用)"));
+                tooltip.add(Text.translatable("gui.ascension.tooltip.status.enabled").formatted(Formatting.GREEN)
+                        .append(" ")
+                        .append(Text.translatable("gui.ascension.tooltip.hint.disable").formatted(Formatting.GRAY)));
             }
         }
-        // ========================
 
+        // 隐藏技能提示
         if (skill.isHidden && isRevealed && currentLevel == 0) {
-            tooltip.add(Text.of("§6[隐藏技能已发现!]"));
+            tooltip.add(Text.translatable("gui.ascension.tooltip.hidden_revealed").formatted(Formatting.GOLD));
         }
 
+        // 获取本地缓存数据
         IEntityDataSaver data = (IEntityDataSaver) this.client.player;
         boolean clientCriteriaMet = true;
         net.minecraft.nbt.NbtCompound cache = null;
@@ -298,7 +305,8 @@ public class SkillTreeScreen extends Screen {
         }
 
         int targetLevel = currentLevel + 1;
-        List<UnlockCriterion> criteriaList = skill.getCriteria(targetLevel);
+        // 注意：这里请确保你的 UnlockCriterion 类包路径正确，如果报错请改为 com.qishui48.ascension.common.skill.UnlockCriterion
+        List<com.qishui48.ascension.skill.UnlockCriterion> criteriaList = skill.getCriteria(targetLevel);
 
         if (!criteriaList.isEmpty()) {
             if (cache != null && cache.contains(skill.id)) {
@@ -310,31 +318,50 @@ public class SkillTreeScreen extends Screen {
 
         if (!isMaxed) {
             int nextLevelCost = skill.getCost(targetLevel);
-            tooltip.add(Text.of("§7升级消耗: §b" + nextLevelCost + " 点"));
+            // [修改] 升级消耗: 使用翻译键，并将数字设为青色(AQUA)
+            tooltip.add(Text.translatable("gui.ascension.tooltip.cost",
+                    Text.literal(String.valueOf(nextLevelCost)).formatted(Formatting.AQUA)).formatted(Formatting.GRAY));
 
             if (!criteriaList.isEmpty()) {
-                tooltip.add(Text.of(""));
+                tooltip.add(Text.of("")); // 空行
                 if (clientCriteriaMet) {
-                    tooltip.add(Text.of("§a[✔] 条件已达成"));
+                    // [修改] 条件达成
+                    tooltip.add(Text.translatable("gui.ascension.tooltip.criteria.met").formatted(Formatting.GREEN));
                 } else {
-                    tooltip.add(Text.of("§c[✖] 需满足:"));
+                    // [修改] 需要满足
+                    tooltip.add(Text.translatable("gui.ascension.tooltip.criteria.required").formatted(Formatting.RED));
+
                     for (int i = 0; i < criteriaList.size(); i++) {
-                        UnlockCriterion c = criteriaList.get(i);
+                        com.qishui48.ascension.skill.UnlockCriterion c = criteriaList.get(i);
                         int currentVal = (progresses != null && i < progresses.length) ? progresses[i] : 0;
                         String color = (currentVal >= c.getThreshold()) ? "§a" : "§7";
-                        tooltip.add(Text.of(color + " - " + c.getDescription().getString()
-                                + " (" + currentVal + "/" + c.getThreshold() + ")"));
+
+                        // [修改] 拼接条件详情：颜色 + " - " + 描述 + " (当前/目标)"
+                        tooltip.add(Text.literal(color + " - ")
+                                .append(c.getDescription())
+                                .append(Text.literal(" (" + currentVal + "/" + c.getThreshold() + ")")));
                     }
                 }
             }
 
             boolean parentUnlocked = (skill.parentId == null) || (getLevel(skill.parentId) > 0);
-            if (!parentUnlocked) tooltip.add(Text.of("§c[前置技能未解锁]"));
-            else if (!criteriaList.isEmpty() && !clientCriteriaMet) tooltip.add(Text.of("§c[条件未满足]"));
-            else if (currentLevel > 0) tooltip.add(Text.of("§a[点击升级]"));
-            else tooltip.add(Text.of("§a[点击解锁]"));
+
+            if (!parentUnlocked) {
+                // [修改] 前置未解锁
+                tooltip.add(Text.translatable("gui.ascension.tooltip.parent_locked").formatted(Formatting.RED));
+            } else if (!criteriaList.isEmpty() && !clientCriteriaMet) {
+                // [修改] 条件未满足
+                tooltip.add(Text.translatable("gui.ascension.tooltip.criteria.failed").formatted(Formatting.RED));
+            } else if (currentLevel > 0) {
+                // [修改] 点击升级
+                tooltip.add(Text.translatable("gui.ascension.tooltip.action.upgrade").formatted(Formatting.GREEN));
+            } else {
+                // [修改] 点击解锁
+                tooltip.add(Text.translatable("gui.ascension.tooltip.action.unlock").formatted(Formatting.GREEN));
+            }
         } else {
-            tooltip.add(Text.of("§6[已满级]"));
+            // [修改] 已满级
+            tooltip.add(Text.translatable("gui.ascension.tooltip.max_level").formatted(Formatting.GOLD));
         }
         context.drawTooltip(this.textRenderer, tooltip, mouseX, mouseY);
     }

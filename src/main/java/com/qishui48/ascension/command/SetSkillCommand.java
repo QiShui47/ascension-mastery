@@ -9,6 +9,7 @@ import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 
 public class SetSkillCommand {
     // 注册逻辑
@@ -34,7 +35,7 @@ public class SetSkillCommand {
             PacketUtils.syncSkillData(player);
 
             // 反馈
-            source.sendFeedback(() -> Text.of("§a[Debug] 技能点已设置为: " + amount), false);
+            source.sendFeedback(() -> Text.translatable("command.ascension.set_skills.success", amount).formatted(Formatting.GREEN), false);
             return 1; // 返回 1 表示执行成功
         } catch (Exception e) {
             return 0;

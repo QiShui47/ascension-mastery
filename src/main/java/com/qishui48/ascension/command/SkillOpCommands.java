@@ -14,6 +14,7 @@ import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 
 public class SkillOpCommands {
 
@@ -73,15 +74,15 @@ public class SkillOpCommands {
                                             PacketUtils.setSkillLevel(player, skillId, level);
                                             // 注意：setSkillLevel 内部应该已经包含了 nbt.put
                                         }
-                                        context.getSource().sendFeedback(() -> Text.of("§a[OP] 已将所有技能等级设为: " + level), false);
+                                        context.getSource().sendFeedback(() -> Text.translatable("command.ascension.set_level.all", level).formatted(Formatting.GREEN), false);
                                     } else {
                                         // === 单个处理 ===
                                         if (SkillRegistry.get(id) == null) {
-                                            context.getSource().sendError(Text.of("§c未知技能 ID: " + id));
+                                            context.getSource().sendError(Text.translatable("command.ascension.error.unknown_skill", id));
                                             return 0;
                                         }
                                         PacketUtils.setSkillLevel(player, id, level);
-                                        context.getSource().sendFeedback(() -> Text.of("§a[OP] 已将 " + id + " 等级设为: " + level), false);
+                                        context.getSource().sendFeedback(() -> Text.translatable("command.ascension.set_level.single", id, level).formatted(Formatting.GREEN), false);
                                     }
 
                                     // === 核心修复：强制刷新 ===

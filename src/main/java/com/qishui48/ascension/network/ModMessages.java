@@ -9,6 +9,7 @@ import com.qishui48.ascension.util.IEntityDataSaver;
 import com.qishui48.ascension.util.PacketUtils;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 
 public class ModMessages {
@@ -31,14 +32,14 @@ public class ModMessages {
 
                 // 检查满级
                 if (currentLevel >= skill.maxLevel) {
-                    player.sendMessage(Text.literal("§c该技能已达最高等级！"), true);
+                    player.sendMessage(Text.translatable("message.ascension.max_level").formatted(Formatting.RED), true);
                     return;
                 }
 
                 // 检查前置
                 if (currentLevel == 0 && skill.parentId != null && !PacketUtils.isSkillUnlocked(player, skill.parentId)) {
                     Skill parent = SkillRegistry.get(skill.parentId);
-                    player.sendMessage(Text.literal("§c前置未解锁！你需要先学习: ").append(parent.getName()), true);
+                    player.sendMessage(Text.translatable("message.ascension.parent_locked", parent.getName()).formatted(Formatting.RED), true);
                     return;
                 }
 
@@ -46,7 +47,7 @@ public class ModMessages {
                 // 0 -> 1级: 检查 level 1 的条件
                 // 1 -> 2级: 检查 level 2 的条件
                 if (!skill.checkCriteria(player, currentLevel + 1)) {
-                    player.sendMessage(Text.literal("§c未满足解锁/升级条件！"), true);
+                    player.sendMessage(Text.translatable("message.ascension.criteria_failed").formatted(Formatting.RED), true);
                     return;
                 }
 
@@ -57,7 +58,7 @@ public class ModMessages {
                 int currentPoints = dataSaver.getPersistentData().getInt("skill_points");
 
                 if (currentPoints < actualCost) {
-                    player.sendMessage(Text.of("§c技能点不足！需要: " + actualCost + " 点"), true);
+                    player.sendMessage(Text.translatable("message.ascension.points_needed", actualCost).formatted(Formatting.RED), true);
                     return;
                 }
 
@@ -67,8 +68,7 @@ public class ModMessages {
                 SkillEffectHandler.refreshAttributes(player);
                 SkillEffectHandler.onSkillUnlocked(player, skillId);
 
-                player.sendMessage(Text.literal("§a成功升级: ").append(skill.getName())
-                        .append(Text.literal(" (Lv." + (currentLevel + 1) + ")")), true);
+                player.sendMessage(Text.translatable("message.ascension.unlock_success", skill.getName(), (currentLevel + 1)).formatted(Formatting.GREEN), true);
             });
         });
 

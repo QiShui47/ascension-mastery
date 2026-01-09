@@ -92,7 +92,7 @@ public abstract class LootableContainerBlockEntityMixin {
                     .append(" ")
                     .append(Text.translatable("notification.ascension.verb.explore").formatted(Formatting.WHITE))
                     .append(" ")
-                    .append(Text.literal(typeKey).formatted(Formatting.AQUA))
+                    .append(Text.translatable(typeKey).formatted(Formatting.AQUA))
                     .append(" ")
                     .append(Text.translatable("notification.ascension.suffix.points", points).formatted(Formatting.BOLD, Formatting.GREEN));
 

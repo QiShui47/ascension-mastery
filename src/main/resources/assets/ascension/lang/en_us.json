@@ -66,6 +66,38 @@
   "enchantment.ascension.pocket_guard": "Pocket Guard",
   "enchantment.ascension.pocket_cat": "Pocket Cat",
 
+  "_comment_skill_tree": "--- Skill Tree Tooltip ---",
+  "gui.ascension.tooltip.level": "Level: %s / %s",
+  "gui.ascension.tooltip.hidden_revealed": "[Hidden Skill Discovered!]",
+  "gui.ascension.tooltip.criteria.met": "[✔] Criteria Met",
+  "gui.ascension.tooltip.criteria.required": "[✖] Criteria Required:",
+  "gui.ascension.tooltip.max_level": "[Max Level]",
+  "gui.ascension.tooltip.cost": "Cost: %s Points",
+  "gui.ascension.tooltip.parent_locked": "[Parent Locked]",
+  "gui.ascension.tooltip.criteria.failed": "[Criteria Not Met]",
+  "gui.ascension.tooltip.action.upgrade": "[Click to Upgrade]",
+  "gui.ascension.tooltip.action.unlock": "[Click to Unlock]",
+
+  "gui.ascension.tooltip.status.disabled": "[Disabled]",
+  "gui.ascension.tooltip.hint.enable": "(M-Click to Enable)",
+  "gui.ascension.tooltip.status.enabled": "[Enabled]",
+  "gui.ascension.tooltip.hint.disable": "(M-Click to Disable)",
+
+  "_comment_command": "--- Command Feedback ---",
+  "command.ascension.set_skills.success": "[Debug] Skill points set to: %s",
+  "command.ascension.condition.grant": "Criteria granted",
+  "command.ascension.condition.revoke": "Criteria revoked",
+  "command.ascension.set_level.all": "[OP] Set all skill levels to: %s",
+  "command.ascension.set_level.single": "[OP] Set %s level to: %s",
+  "command.ascension.error.unknown_skill": "Unknown Skill ID: %s",
+
+  "_comment_server_message": "--- Server Messages ---",
+  "message.ascension.max_level": "Max level reached!",
+  "message.ascension.parent_locked": "Parent locked! You need: %s",
+  "message.ascension.criteria_failed": "Criteria not met! Check skill tree.",
+  "message.ascension.points_needed": "Not enough points! Need: %s",
+  "message.ascension.unlock_success": "Upgraded: %s (Lv.%s)",
+
   "skill.ascension.root": "Basics",
   "skill.ascension.root.desc": "Where it all begins.",
 
