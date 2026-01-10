@@ -1,15 +1,15 @@
 {
 	"schemaVersion": 1,
-	"id": "ascension",
+	"id": "ascension-mastery",
 	"version": "${version}",
-	"name": "Ascension",
+	"name": "Ascension Mastery",
 	"description": "More balanced enchantments and skill tree system.",
 	"authors": [
 		"QiShui48"
 	],
 	"contact": {
 		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/QiShui47/Ascension"
+		"sources": "https://github.com/QiShui47/ascension-mastery"
 	},
 	"license": "MIT",
 	"icon": "assets/ascension/icon.png",
