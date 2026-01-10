@@ -1,5 +1,6 @@
 package com.qishui48.ascension.mixin;
 
+import com.qishui48.ascension.Ascension;
 import com.qishui48.ascension.util.IEntityDataSaver;
 import com.qishui48.ascension.util.PacketUtils;
 import net.minecraft.entity.Entity;
@@ -20,6 +21,7 @@ import net.minecraft.nbt.NbtString;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
+import net.minecraft.stat.Stats;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import org.spongepowered.asm.mixin.Mixin;
@@ -60,6 +62,12 @@ public abstract class LivingEntityMixin extends Entity {
                 killedList = new NbtList();
             }
 
+            LivingEntity victim = (LivingEntity)(Object)this;
+            // === 击杀燃烧骷髅判定 ===
+            if (victim instanceof net.minecraft.entity.mob.SkeletonEntity && victim.isOnFire()) {
+                player.getStatHandler().increaseStat(player, Stats.CUSTOM.getOrCreateStat(Ascension.KILL_BURNING_SKELETON), 1);
+            }
+
             // 5. 查重
             for (NbtElement element : killedList) {
                 if (element.asString().equals(entityId)) {
@@ -71,8 +79,6 @@ public abstract class LivingEntityMixin extends Entity {
             int points = 1; // 基础分 (比如杀牛杀羊)
             String rankKey = "notification.ascension.header.kill.first"; // 默认：首杀
             Formatting color = Formatting.WHITE;
-
-            LivingEntity victim = (LivingEntity)(Object)this;
 
             // 1. 敌对生物检测 (Monster 包含僵尸、骷髅、蜘蛛、苦力怕等)
             boolean isHostile = victim instanceof Monster;

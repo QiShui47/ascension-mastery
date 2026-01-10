@@ -1,5 +1,7 @@
 package com.qishui48.ascension.mixin;
 
+import com.qishui48.ascension.Ascension;
+import com.qishui48.ascension.skill.SkillEffectHandler;
 import com.qishui48.ascension.util.IEntityDataSaver;
 import com.qishui48.ascension.util.PacketUtils;
 import net.minecraft.entity.effect.StatusEffectInstance;
@@ -16,6 +18,7 @@ import net.minecraft.recipe.SmeltingRecipe;
 import net.minecraft.registry.Registries;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
+import net.minecraft.stat.Stats;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
@@ -273,6 +276,58 @@ public abstract class PlayerEntityMixin {
             player.playSound(SoundEvents.UI_CARTOGRAPHY_TABLE_TAKE_RESULT, SoundCategory.PLAYERS, 0.5f, 1.2f);
         }
     }
+
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void onTickFireLogic(CallbackInfo ci) {
+        PlayerEntity player = (PlayerEntity) (Object) this;
+        if (!player.getWorld().isClient && player instanceof ServerPlayerEntity serverPlayer) {
+
+            // 1. === 火焰抵抗 Lv2：燃烧时间减半 ===
+            // 逻辑：每 Tick 额外减少 1 点 fireTicks
+            if (player.isOnFire() && PacketUtils.getSkillLevel(serverPlayer, "fire_resistance") >= 2) {
+                // getFireTicks 是 Accessor 或者原版方法，如果 Fabric 映射没有，可能需要 ((Entity)player).getFireTicks()
+                // 这里假设能直接调用或者你有 Accessor
+                int ticks = player.getFireTicks();
+                if (ticks > 0) {
+                    // 额外减 1，加上原版的减 1，等于每 Tick 减 2 -> 时间减半
+                    player.setFireTicks(ticks - 1);
+                }
+            }
+
+            // 2. === 升级条件：熔浆游泳追踪 ===
+            if (player.isInLava()) {
+                // 简单的距离判定：如果这一刻在移动
+                double velocity = player.getVelocity().length();
+                if (velocity > 0.01) {
+                    // 增加统计数据 (粗略估算，每 Tick 移动的距离转为 cm)
+                    // 更精确的做法是计算 (x-lastX, y-lastY, z-lastZ)，这里简化处理
+                    int distCm = (int)(velocity * 100);
+                    if (distCm > 0) {
+                        serverPlayer.getStatHandler().increaseStat(serverPlayer, Stats.CUSTOM.getOrCreateStat(Ascension.SWIM_IN_LAVA), distCm);
+
+                        // 实时检查是否达标并同步 (可选，PacketUtils.syncSkillData 可能会在其他地方统一调用)
+                        // 为了 UI 实时更新，建议加上
+                        // PacketUtils.syncSkillData(serverPlayer);
+                    }
+                }
+            }
+        }
+    }
+
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void onTickThermal(CallbackInfo ci) {
+        PlayerEntity player = (PlayerEntity) (Object) this;
+        // 只有服务端玩家执行
+        if (!player.getWorld().isClient && player instanceof ServerPlayerEntity serverPlayer) {
+
+            // 每 10 tick (0.5秒) 更新一次即可，不需要每 tick 都更新，节省性能
+            // 这样着火灭了之后最多延迟 0.5秒 属性消失，玩家感觉不到
+            if (player.age % 10 == 0) {
+                SkillEffectHandler.updateThermalDynamo(serverPlayer);
+            }
+        }
+    }
+
     @Unique
     private void resetFurnace(ServerPlayerEntity player, ItemStack currentStack) {
         furnaceTimer = 0;

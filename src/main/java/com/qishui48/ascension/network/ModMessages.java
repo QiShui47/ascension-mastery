@@ -12,6 +12,9 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ModMessages {
     public static final Identifier UNLOCK_REQUEST_ID = new Identifier(Ascension.MOD_ID, "request_unlock_skill");
     public static final Identifier JUMP_REQUEST_ID = new Identifier(Ascension.MOD_ID, "request_rocket_boost");
@@ -36,6 +39,45 @@ public class ModMessages {
                     return;
                 }
 
+                // 检查互斥
+                for (String mutexId : skill.mutexSkills) {
+                    if (PacketUtils.isSkillUnlocked(player, mutexId)) {
+                        // 如果互斥技能已解锁，发送错误提示
+                        player.sendMessage(Text.translatable("message.ascension.mutex_locked",
+                                SkillRegistry.get(mutexId).getName()).formatted(Formatting.RED), true);
+                        return;
+                    }
+                }
+
+                // 检查父节点 (逻辑改为：满足任意一个父节点即可)
+                if (currentLevel == 0) {
+                    boolean hasParent = (skill.parentId != null);
+                    boolean parentUnlocked = false;
+
+                    // 收集所有父节点 (主父节点 + 额外父节点)
+                    List<String> allParents = new ArrayList<>();
+                    if (skill.parentId != null) allParents.add(skill.parentId);
+                    allParents.addAll(skill.extraParents);
+
+                    if (allParents.isEmpty()) {
+                        parentUnlocked = true; // 根节点
+                    } else {
+                        // 只要有一个父节点解锁了，就算通过
+                        for (String pid : allParents) {
+                            if (PacketUtils.isSkillUnlocked(player, pid)) {
+                                parentUnlocked = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!parentUnlocked) {
+                        // 提示可以做得更智能，告诉玩家缺哪些
+                        player.sendMessage(Text.translatable("message.ascension.parent_locked_any").formatted(Formatting.RED), true);
+                        return;
+                    }
+                }
+
                 // 检查前置
                 if (currentLevel == 0 && skill.parentId != null && !PacketUtils.isSkillUnlocked(player, skill.parentId)) {
                     Skill parent = SkillRegistry.get(skill.parentId);
@@ -43,7 +85,7 @@ public class ModMessages {
                     return;
                 }
 
-                // === 修复：检查当前等级对应的升级条件 ===
+                // === 检查当前等级对应的升级条件 ===
                 // 0 -> 1级: 检查 level 1 的条件
                 // 1 -> 2级: 检查 level 2 的条件
                 if (!skill.checkCriteria(player, currentLevel + 1)) {
@@ -51,7 +93,7 @@ public class ModMessages {
                     return;
                 }
 
-                // 计算消耗 (已修复：直接使用 Skill 里的配置，不再额外乘倍率)
+                // 计算消耗 (直接使用 Skill 里的配置，不再额外乘倍率)
                 int actualCost = skill.getCost(currentLevel + 1);
 
                 IEntityDataSaver dataSaver = (IEntityDataSaver) player;

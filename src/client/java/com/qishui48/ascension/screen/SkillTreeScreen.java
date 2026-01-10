@@ -102,25 +102,32 @@ public class SkillTreeScreen extends Screen {
             boolean isRevealed = isRevealed(skill.id);
             if (skill.isHidden && !isRevealed && currentLevel == 0) continue;
 
-            if (skill.parentId != null) {
-                Skill parent = SkillRegistry.get(skill.parentId);
-                if (parent != null) {
-                    boolean parentRevealed = isRevealed(parent.id);
-                    int parentLevel = getLevel(parent.id);
-                    if (parent.isHidden && !parentRevealed && parentLevel == 0) {
-                        // skip
-                    } else {
-                        int x1 = (int)(centerX + parent.x + scrollX) + 8;
-                        int y1 = (int)(centerY + parent.y + scrollY) + 8;
-                        int x2 = (int)(centerX + skill.x + scrollX) + 8;
-                        int y2 = (int)(centerY + skill.y + scrollY) + 8;
-                        boolean isLinked = currentLevel > 0;
-                        int color = isLinked ? 0xFFFFD700 : 0xFFFFFFFF;
+            // === [新增] 多父节点连线支持 ===
+            // 收集所有父节点 ID (主 + 额外)
+            List<String> drawLineTo = new ArrayList<>();
+            if (skill.parentId != null) drawLineTo.add(skill.parentId);
+            drawLineTo.addAll(skill.extraParents);
 
-                        if (x1 != x2) context.fill(Math.min(x1, x2), y1 - 1, Math.max(x1, x2), y1 + 1, color);
-                        if (y1 != y2) context.fill(x2 - 1, Math.min(y1, y2), x2 + 1, Math.max(y1, y2), color);
-                    }
-                }
+            for (String pid : drawLineTo) {
+                Skill parent = SkillRegistry.get(pid);
+                if (parent == null) continue;
+
+                // 父节点隐藏检查
+                boolean parentRevealed = isRevealed(parent.id);
+                int parentLevel = getLevel(parent.id);
+                if (parent.isHidden && !parentRevealed && parentLevel == 0) continue; // 跳过
+
+                int x1 = (int)(centerX + parent.x + scrollX) + 8;
+                int y1 = (int)(centerY + parent.y + scrollY) + 8;
+                int x2 = (int)(centerX + skill.x + scrollX) + 8;
+                int y2 = (int)(centerY + skill.y + scrollY) + 8;
+
+                // 连线颜色逻辑：如果 [自己解锁] 且 [该父节点也解锁]，则为金色；否则白色
+                boolean isLinked = currentLevel > 0 && parentLevel > 0;
+                int color = isLinked ? 0xFFFFD700 : 0xFFFFFFFF;
+
+                if (x1 != x2) context.fill(Math.min(x1, x2), y1 - 1, Math.max(x1, x2), y1 + 1, color);
+                if (y1 != y2) context.fill(x2 - 1, Math.min(y1, y2), x2 + 1, Math.max(y1, y2), color);
             }
         }
 
@@ -151,9 +158,22 @@ public class SkillTreeScreen extends Screen {
             boolean isMaxed = currentLevel >= skill.maxLevel;
             boolean isDisabled = isUnlocked && isSkillDisabled(skill.id); // 是否被停用
 
+            // === [新增] 检查互斥锁定状态 ===
+            boolean isMutexLocked = false;
+            for (String mutexId : skill.mutexSkills) {
+                if (getLevel(mutexId) > 0) {
+                    isMutexLocked = true;
+                    break;
+                }
+            }
+
             // === [新增] 如果已解锁但被停用，画一个半透明黑框盖住图标 ===
             if (isDisabled) {
                 context.fill(drawX, drawY, drawX + 16, drawY + 16, 0xAA000000);
+            }
+            // === [新增] 如果互斥锁定，画一个半透明红框盖住图标 ===
+            else if (isMutexLocked) {
+                context.fill(drawX, drawY, drawX + 16, drawY + 16, 0x80FF0000);
             }
 
             // 状态边框
@@ -197,11 +217,14 @@ public class SkillTreeScreen extends Screen {
             //context.fill(drawTextX - 2, drawTextY - 2, drawTextX + textWidth + 2, drawTextY + 9, 0x80000000);
 
             // 2. 绘制文字
-            // 颜色逻辑：如果被停用，显示深灰色；否则显示正常颜色
+            // 颜色逻辑：如果被停用，显示深灰色；互斥锁定显示红色；否则显示正常颜色
             int textColor = isMaxed ? 0xFFFFD700 : (isUnlocked ? 0xFFFFFFFF : 0xFFAAAAAA);
             if (isDisabled) {
                 textColor = 0xFF555555; // 深灰
+            } else if (isMutexLocked) {
+                textColor = 0xFFFF5555; // 浅红
             }
+
             context.drawText(this.textRenderer, name, drawTextX, drawTextY, textColor, true);
 
             context.getMatrices().pop(); // 结束文字变换
@@ -291,6 +314,18 @@ public class SkillTreeScreen extends Screen {
             tooltip.add(Text.translatable("gui.ascension.tooltip.hidden_revealed").formatted(Formatting.GOLD));
         }
 
+        // === [新增] 互斥锁定提示 ===
+        boolean isMutexLocked = false;
+        for (String mutexId : skill.mutexSkills) {
+            if (getLevel(mutexId) > 0) {
+                isMutexLocked = true;
+                break;
+            }
+        }
+        if (isMutexLocked) {
+            tooltip.add(Text.translatable("gui.ascension.tooltip.mutex_locked").formatted(Formatting.RED));
+        }
+
         // 获取本地缓存数据
         IEntityDataSaver data = (IEntityDataSaver) this.client.player;
         boolean clientCriteriaMet = true;
@@ -305,7 +340,6 @@ public class SkillTreeScreen extends Screen {
         }
 
         int targetLevel = currentLevel + 1;
-        // 注意：这里请确保你的 UnlockCriterion 类包路径正确，如果报错请改为 com.qishui48.ascension.common.skill.UnlockCriterion
         List<com.qishui48.ascension.skill.UnlockCriterion> criteriaList = skill.getCriteria(targetLevel);
 
         if (!criteriaList.isEmpty()) {
@@ -344,7 +378,25 @@ public class SkillTreeScreen extends Screen {
                 }
             }
 
-            boolean parentUnlocked = (skill.parentId == null) || (getLevel(skill.parentId) > 0);
+            boolean hasParent = (skill.parentId != null);
+            boolean parentUnlocked = false;
+
+            // === [新增] 多父节点解锁检查 ===
+            List<String> allParents = new ArrayList<>();
+            if (skill.parentId != null) allParents.add(skill.parentId);
+            allParents.addAll(skill.extraParents);
+
+            if (allParents.isEmpty()) {
+                parentUnlocked = true; // 根节点
+            } else {
+                // 只要有一个父节点解锁了，就算前置达成
+                for (String pid : allParents) {
+                    if (getLevel(pid) > 0) {
+                        parentUnlocked = true;
+                        break;
+                    }
+                }
+            }
 
             if (!parentUnlocked) {
                 // [修改] 前置未解锁

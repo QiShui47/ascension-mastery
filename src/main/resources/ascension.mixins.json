@@ -13,7 +13,9 @@
 		"PlayerInventoryMixin",
 		"LivingEntityMixin",
 		"LootableContainerBlockEntityMixin",
-		"PlayerAdvancementTrackerMixin"
+		"PlayerAdvancementTrackerMixin",
+		"BrewingStandSlotMixin",
+		"ServerStatHandlerMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

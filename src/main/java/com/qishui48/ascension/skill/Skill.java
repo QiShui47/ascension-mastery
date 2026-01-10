@@ -4,10 +4,8 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+
+import java.util.*;
 
 public class Skill {
     public final String id;
@@ -17,8 +15,10 @@ public class Skill {
     public final int maxLevel;
     public final boolean isHidden; // 新增：是否是隐藏技能
 
-    private final int[] costs;
+    public final List<String> extraParents = new ArrayList<>(); // 额外父节点 (用于逻辑判定和画线)
+    public final List<String> mutexSkills = new ArrayList<>();  // 互斥技能 ID 列表
 
+    private final int[] costs;
     // key = 目标等级 (例如 1 代表解锁条件, 2 代表升到 2 级的条件)
     private final Map<Integer, List<UnlockCriterion>> criteriaMap = new HashMap<>();
 
@@ -47,6 +47,18 @@ public class Skill {
                 this.costs[i] = (costs.length > 0) ? costs[costs.length - 1] : 1;
             }
         }
+    }
+
+    // === 链式配置方法 ===
+    // 添加互斥技能
+    public Skill setMutex(String... skillIds) {
+        this.mutexSkills.addAll(Arrays.asList(skillIds));
+        return this;
+    }
+    // 添加额外父节点 (实现多父节点汇聚)
+    public Skill addParent(String parentId) {
+        this.extraParents.add(parentId);
+        return this;
     }
 
     public int getCost(int targetLevel) {

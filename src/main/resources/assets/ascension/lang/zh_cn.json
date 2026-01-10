@@ -37,6 +37,8 @@
   "notification.ascension.header.advancement.task": "[进度达成]",
   "notification.ascension.header.advancement.goal": "[目标达成]",
   "notification.ascension.header.advancement.challenge": "[挑战完成]",
+  "notification.ascension.header.criteria": "[条件达成]",
+  "notification.ascension.for_skill": "(用于技能: %s)",
 
   "_comment_verb": "--- 通知动词 ---",
   "notification.ascension.verb.explore": "探索",
@@ -69,6 +71,7 @@
   "gui.ascension.tooltip.criteria.failed": "[解锁条件未满足]",
   "gui.ascension.tooltip.action.upgrade": "[点击升级]",
   "gui.ascension.tooltip.action.unlock": "[点击解锁]",
+  "gui.ascension.tooltip.mutex_locked": "[互斥锁定] 已学习对立技能",
 
   "gui.ascension.tooltip.status.disabled": "[已停用]",
   "gui.ascension.tooltip.hint.enable": "(中键点击启用)",
@@ -89,6 +92,8 @@
   "message.ascension.criteria_failed": "未满足解锁条件！请查看技能树说明。",
   "message.ascension.points_needed": "技能点不足！需要: %s 点",
   "message.ascension.unlock_success": "成功升级: %s (Lv.%s)",
+  "message.ascension.mutex_locked": "与技能 %s 互斥，无法学习！",
+  "message.ascension.parent_locked_any": "前置未解锁！你需要至少解锁一个前置技能。",
 
   "enchantment.ascension.life_steal": "生命汲取",
   "enchantment.ascension.speed_steal": "速度偷取",
@@ -109,6 +114,16 @@
 
   "skill.ascension.mining": "挖掘技巧",
   "skill.ascension.mining.desc": "提高破坏和创造的效率",
+
+  "skill.ascension.fire_resistance": "火焰抵抗",
+  "skill.ascension.fire_resistance.desc": "受到的火焰伤害减半。",
+  "skill.ascension.fire_resistance.desc.2": "受到的火焰伤害减半，且身上的火焰熄灭速度翻倍。",
+
+  "skill.ascension.fire_infection": "火焰传染",
+  "skill.ascension.fire_infection.desc": "以火攻火！着火时受击会点燃攻击者。",
+
+  "skill.ascension.thermal_dynamo": "热能引擎",
+  "skill.ascension.thermal_dynamo.desc": "危险驱动！着火时移动速度+30%，攻击力+20%。",
 
   "skill.ascension.fire_res": "火焰免疫",
   "skill.ascension.fire_res.desc": "无视火焰伤害，像下界生物一样",
@@ -137,6 +152,10 @@
   "skill.ascension.adrenaline_burst.desc": "满血时若受到大量伤害，获得伤害吸收和迅捷效果",
   "skill.ascension.adrenaline_burst.desc.2": "满血时若受到大量伤害，获得更多的伤害吸收和迅捷效果",
 
+  "skill.ascension.excitement": "亢奋",
+  "skill.ascension.excitement.desc": "遭受重创时，若饱食度充足，消耗饥饿值快速回复生命。",
+  "skill.ascension.excitement.desc.2": "遭受重创时，消耗饥饿值回复更多生命。",
+
   "skill.ascension.hunger_constitution": "饥饿体质",
   "skill.ascension.hunger_constitution.desc": "饱食度下降时获得伤害吸收",
   "skill.ascension.hunger_constitution.desc.2": "饱食度下降时获得更多伤害吸收",
@@ -161,5 +180,11 @@
   "criterion.ascension.kill_cow": "击杀 %s 只牛",
   "criterion.ascension.jump": "跳跃 %s 次",
   "criterion.ascension.kill_phantom": "击杀 %s 只幻翼",
-  "criterion.ascension.fly_elytra": "使用鞘翅飞行 %s 米"
+  "criterion.ascension.fly_elytra": "使用鞘翅飞行 %s 米",
+  "criterion.ascension.eat_bread": "食用 %s 个面包",
+  "criterion.ascension.eat_poison_potato": "哪怕有毒也要吃下 %s 个毒马铃薯",
+  "criterion.ascension.brew_fire_res": "从酿造台取出 %s 瓶抗火药水",
+  "criterion.ascension.swim_lava": "在熔浆中游泳 %s 米",
+  "criterion.ascension.kill_burning_skeleton": "击杀 %s 只燃烧中的骷髅",
+  "criterion.ascension.take_fire_damage": "累计承受 %s 点火焰伤害"
 }

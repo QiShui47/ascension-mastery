@@ -39,10 +39,15 @@ public class Ascension implements ModInitializer {
 	public static final Identifier PACKET_ID = new Identifier(MOD_ID, "sync_skill_data");
 	public static final Identifier UNLOCK_REQUEST_ID = new Identifier(MOD_ID, "request_unlock_skill");
 
+	// === 自定义统计数据 ID ===
+	public static final Identifier BREW_FIRE_RES_POTION = new Identifier(MOD_ID, "brew_fire_res_potion");
+	public static final Identifier SWIM_IN_LAVA = new Identifier(MOD_ID, "swim_in_lava");
+	public static final Identifier KILL_BURNING_SKELETON = new Identifier(MOD_ID, "kill_burning_skeleton");
+
 	@Override
 	public void onInitialize() {
 		// 0. 最先初始化技能表
-		SkillRegistry.registerAll();
+		//SkillRegistry.registerAll();
 		// 1. 实例化
 		HEALTH_STEAL = new LifeStealEnchantment();
 		SPEED_STEAL = new SpeedStealEnchantment();
@@ -72,6 +77,12 @@ public class Ascension implements ModInitializer {
 
 		CommandRegistrationCallback.EVENT.register(SetSkillCommand::register);
 		CommandRegistrationCallback.EVENT.register(SkillOpCommands::register);
+
+		// 注册自定义统计
+		Registry.register(Registries.CUSTOM_STAT, BREW_FIRE_RES_POTION, BREW_FIRE_RES_POTION);
+		Registry.register(Registries.CUSTOM_STAT, SWIM_IN_LAVA, SWIM_IN_LAVA);
+		Registry.register(Registries.CUSTOM_STAT, KILL_BURNING_SKELETON, KILL_BURNING_SKELETON);
+		SkillRegistry.registerAll();
 
 		//踏足新维度的事件
 		ModEvents.register();
