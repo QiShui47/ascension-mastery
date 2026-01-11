@@ -43,6 +43,10 @@ public class Ascension implements ModInitializer {
 	public static final Identifier BREW_FIRE_RES_POTION = new Identifier(MOD_ID, "brew_fire_res_potion");
 	public static final Identifier SWIM_IN_LAVA = new Identifier(MOD_ID, "swim_in_lava");
 	public static final Identifier KILL_BURNING_SKELETON = new Identifier(MOD_ID, "kill_burning_skeleton");
+	public static final Identifier COLLECT_LOG_VARIANTS = new Identifier(MOD_ID, "collect_log_variants"); // 收集原木种类数
+	public static final Identifier EXPLORE_MINESHAFT = new Identifier(MOD_ID, "explore_mineshaft");       // 探索废弃矿井
+	public static final Identifier WALK_ON_BEDROCK = new Identifier(MOD_ID, "walk_on_bedrock");
+	public static final Identifier COLLECT_STAINED_GLASS = new Identifier(MOD_ID, "collect_stained_glass"); // 用于追踪数量
 
 	@Override
 	public void onInitialize() {
@@ -51,17 +55,17 @@ public class Ascension implements ModInitializer {
 		// 1. 实例化
 		HEALTH_STEAL = new LifeStealEnchantment();
 		SPEED_STEAL = new SpeedStealEnchantment();
-		LIFE_FORCE = new Enchantment(Enchantment.Rarity.VERY_RARE, EnchantmentTarget.BOW, new EquipmentSlot[]{EquipmentSlot.MAINHAND}) {
+		LIFE_FORCE = new Enchantment(Enchantment.Rarity.COMMON, EnchantmentTarget.BOW, new EquipmentSlot[]{EquipmentSlot.MAINHAND}) {
 			@Override
 			public int getMaxLevel() { return 1; }
 		};
-		POCKET_BUCKET = new Enchantment(Enchantment.Rarity.VERY_RARE, EnchantmentTarget.BOW, new EquipmentSlot[]{EquipmentSlot.MAINHAND}) {
+		POCKET_BUCKET = new Enchantment(Enchantment.Rarity.UNCOMMON, EnchantmentTarget.BOW, new EquipmentSlot[]{EquipmentSlot.MAINHAND}) {
 			@Override
 			public int getMaxLevel() { return 1; }
 		};
 		POCKET_GUARD = new SpecialBowEnchantment(); // 使用互斥基类
 		POCKET_CAT = new SpecialBowEnchantment();
-		DEATH_STAR_CANNON = new Enchantment(Enchantment.Rarity.VERY_RARE, EnchantmentTarget.BOW, new EquipmentSlot[]{EquipmentSlot.MAINHAND}) {
+		DEATH_STAR_CANNON = new Enchantment(Enchantment.Rarity.RARE, EnchantmentTarget.BOW, new EquipmentSlot[]{EquipmentSlot.MAINHAND}) {
 			@Override
 			public int getMaxLevel() { return 1; }
 		};
@@ -82,6 +86,10 @@ public class Ascension implements ModInitializer {
 		Registry.register(Registries.CUSTOM_STAT, BREW_FIRE_RES_POTION, BREW_FIRE_RES_POTION);
 		Registry.register(Registries.CUSTOM_STAT, SWIM_IN_LAVA, SWIM_IN_LAVA);
 		Registry.register(Registries.CUSTOM_STAT, KILL_BURNING_SKELETON, KILL_BURNING_SKELETON);
+		Registry.register(Registries.CUSTOM_STAT, COLLECT_LOG_VARIANTS, COLLECT_LOG_VARIANTS);
+		Registry.register(Registries.CUSTOM_STAT, EXPLORE_MINESHAFT, EXPLORE_MINESHAFT);
+		Registry.register(Registries.CUSTOM_STAT, WALK_ON_BEDROCK, WALK_ON_BEDROCK);
+		Registry.register(Registries.CUSTOM_STAT, COLLECT_STAINED_GLASS, COLLECT_STAINED_GLASS);
 		SkillRegistry.registerAll();
 
 		//踏足新维度的事件

@@ -15,7 +15,9 @@
 		"LootableContainerBlockEntityMixin",
 		"PlayerAdvancementTrackerMixin",
 		"BrewingStandSlotMixin",
-		"ServerStatHandlerMixin"
+		"ServerStatHandlerMixin",
+		"AbstractBlockMixin",
+		"ShovelItemMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

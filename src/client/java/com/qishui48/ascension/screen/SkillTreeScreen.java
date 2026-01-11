@@ -129,7 +129,7 @@ public class SkillTreeScreen extends Screen {
             boolean isMaxed = currentLevel >= skill.maxLevel;
             boolean isDisabled = isUnlocked && isSkillDisabled(skill.id); // 是否被停用
 
-            // === [新增] 检查互斥锁定状态 ===
+            // === 检查互斥锁定状态 ===
             boolean isMutexLocked = false;
             for (String mutexId : skill.mutexSkills) {
                 if (getLevel(mutexId) > 0) {
@@ -138,11 +138,11 @@ public class SkillTreeScreen extends Screen {
                 }
             }
 
-            // === [新增] 如果已解锁但被停用，画一个半透明黑框盖住图标 ===
+            // === 如果已解锁但被停用，画一个半透明黑框盖住图标 ===
             if (isDisabled) {
                 context.fill(drawX, drawY, drawX + 16, drawY + 16, 0xAA000000);
             }
-            // === [新增] 如果互斥锁定，画一个半透明红框盖住图标 ===
+            // === 如果互斥锁定，画一个半透明红框盖住图标 ===
             else if (isMutexLocked) {
                 context.fill(drawX, drawY, drawX + 16, drawY + 16, 0x80FF0000);
             }
@@ -177,7 +177,7 @@ public class SkillTreeScreen extends Screen {
 
             // 坐标计算：移动到图标上方中心 (drawX + 8, drawY - 8)
             context.getMatrices().push();
-            context.getMatrices().translate(drawX + 8, drawY - 8, 200); // Z=200 保证在最上层
+            context.getMatrices().translate(drawX + 8, drawY - 8, 10); // Z=10 仅比图标高
             context.getMatrices().scale(textScale, textScale, 1.0f);
 
             // 此时 (0,0) 即为图标上方的中心点

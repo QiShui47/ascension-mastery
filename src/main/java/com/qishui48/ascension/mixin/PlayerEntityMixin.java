@@ -4,21 +4,29 @@ import com.qishui48.ascension.Ascension;
 import com.qishui48.ascension.skill.SkillEffectHandler;
 import com.qishui48.ascension.util.IEntityDataSaver;
 import com.qishui48.ascension.util.PacketUtils;
+import net.minecraft.block.BlockState;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.HungerManager;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.PickaxeItem;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtString;
 import net.minecraft.recipe.RecipeType;
 import net.minecraft.recipe.SmeltingRecipe;
 import net.minecraft.registry.Registries;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.registry.tag.BlockTags;
+import net.minecraft.registry.tag.StructureTags;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.stat.Stats;
+import net.minecraft.structure.StructureStart;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
@@ -27,6 +35,7 @@ import net.minecraft.world.World;
 import java.util.Optional;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.world.gen.structure.Structure;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -215,12 +224,44 @@ public abstract class PlayerEntityMixin {
         }
     }
 
+    @Unique private double lastBedrockX, lastBedrockZ;
+    @Unique private boolean initializedBedrockPos = false;
     @Inject(method = "tick", at = @At("HEAD"))
-    private void onTickBiomeCheck(CallbackInfo ci) {
+    private void onTickEnvironmentCheck(CallbackInfo ci) {
         PlayerEntity player = (PlayerEntity) (Object) this;
 
         // 1. 服务端检查，且每 40 tick (2秒) 检查一次，节省性能
         if (!player.getWorld().isClient && player.age % 40 == 0 && player instanceof ServerPlayerEntity serverPlayer) {
+
+            // === 1. Bedrock Walk Detection (Runs Every Tick) ===
+            // Initialize previous position if needed
+            if (!initializedBedrockPos) {
+                lastBedrockX = player.getX();
+                lastBedrockZ = player.getZ();
+                initializedBedrockPos = true;
+            }
+
+            // Calculate distance moved since last tick (Horizontal only)
+            double dx = player.getX() - lastBedrockX;
+            double dz = player.getZ() - lastBedrockZ;
+            double distSqr = dx * dx + dz * dz;
+
+            // Update last position for next tick
+            lastBedrockX = player.getX();
+            lastBedrockZ = player.getZ();
+
+            // Logic: Must be on ground, moving, and standing on Bedrock
+            // Threshold 0.0001 to avoid jitter counting
+            if (player.isOnGround() && distSqr > 0.0001) {
+                net.minecraft.util.math.BlockPos groundPos = player.getBlockPos().down();
+                if (player.getWorld().getBlockState(groundPos).isOf(net.minecraft.block.Blocks.BEDROCK)) {
+                    // Convert blocks to cm (1 block = 100 cm)
+                    int cmMoved = (int) (Math.sqrt(distSqr) * 100.0);
+                    if (cmMoved > 0) {
+                        serverPlayer.getStatHandler().increaseStat(serverPlayer, Stats.CUSTOM.getOrCreateStat(Ascension.WALK_ON_BEDROCK), cmMoved);
+                    }
+                }
+            }
 
             // 2. 获取当前群系 ID
             // getBiome 返回的是 RegistryEntry，需要取 Key
@@ -274,6 +315,32 @@ public abstract class PlayerEntityMixin {
             PacketUtils.sendNotification(serverPlayer, msg);
 
             player.playSound(SoundEvents.UI_CARTOGRAPHY_TABLE_TAKE_RESULT, SoundCategory.PLAYERS, 0.5f, 1.2f);
+
+            // 手动遍历检测矿井 (最稳健方案)
+            if (player.getWorld() instanceof ServerWorld serverWorld) {
+                var structureAccessor = serverWorld.getStructureAccessor();
+                // 1. 获取结构注册表
+                var structureRegistry = serverWorld.getRegistryManager().get(RegistryKeys.STRUCTURE);
+
+                // 2. 获取所有属于 "废弃矿井" 标签的结构类型列表
+                // (这会包含 minecraft:mineshaft 和 minecraft:mineshaft_mesa)
+                var mineshaftList = structureRegistry.getEntryList(StructureTags.MINESHAFT);
+
+                if (mineshaftList.isPresent()) {
+                    // 3. 遍历列表，逐个检查
+                    for (RegistryEntry<Structure> entry : mineshaftList.get()) {
+                        // 使用 getStructureAt 检查具体的结构类型 (这是最底层的 API，绝不会出错)
+                        if (structureAccessor.getStructureAt(player.getBlockPos(), entry.value()).hasChildren()) {
+
+                            // 4. 只要命中其中任何一个，就视为成功
+                            serverPlayer.getStatHandler().increaseStat(serverPlayer, Stats.CUSTOM.getOrCreateStat(Ascension.EXPLORE_MINESHAFT), 1);
+
+                            // 既然已经找到了，就没必要继续检查其他类型了，节省性能
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -326,6 +393,66 @@ public abstract class PlayerEntityMixin {
                 SkillEffectHandler.updateThermalDynamo(serverPlayer);
             }
         }
+    }
+
+    // 挖掘速度修改
+    @Inject(method = "getBlockBreakingSpeed", at = @At("RETURN"), cancellable = true)
+    private void modifyMiningSpeed(BlockState block, CallbackInfoReturnable<Float> cir) {
+        PlayerEntity player = (PlayerEntity) (Object) this;
+
+        // === [重要] 移除 "if (player.getWorld().isClient) return;" ===
+        // 客户端必须运行此逻辑，否则挖掘进度条会显示错误（挖掘看起来很慢，但方块突然消失）。
+
+        float speed = cir.getReturnValue();
+
+        // === [修复] 双端通用的技能检查 ===
+        // 我们不能使用 PacketUtils，因为它需要 ServerPlayerEntity。
+        // 我们直接通过接口读取 NBT，这在 ClientPlayerEntity 和 ServerPlayerEntity 上都有效。
+        IEntityDataSaver dataSaver = (IEntityDataSaver) player;
+        NbtCompound nbt = dataSaver.getPersistentData();
+
+        // 辅助变量：安全获取技能等级 (如果未解锁则为 0)
+        int lumberjackLevel = 0;
+        int minerFrenzyLevel = 0;
+
+        if (nbt.contains("skill_levels")) {
+            NbtCompound levels = nbt.getCompound("skill_levels");
+            NbtCompound disabled = nbt.contains("disabled_skills") ? nbt.getCompound("disabled_skills") : new NbtCompound();
+
+            // 获取等级，同时检查是否被禁用
+            if (!disabled.getBoolean("lumberjack")) {
+                lumberjackLevel = levels.getInt("lumberjack");
+            }
+            if (!disabled.getBoolean("miner_frenzy")) {
+                minerFrenzyLevel = levels.getInt("miner_frenzy");
+            }
+        }
+
+        // A. 森林主宰 (Lumberjack)
+        // 条件：目标是原木或树叶
+        if (block.isIn(BlockTags.LOGS) || block.isIn(BlockTags.LEAVES)) {
+            if (lumberjackLevel > 0) {
+                // 提升倍率：Lv1=1.2x, Lv2=1.4x, Lv3=1.6x
+                float multiplier = 1.0f + (lumberjackLevel * 0.2f) + (lumberjackLevel == 3 ? 0.2f : 0);
+                speed *= multiplier;
+            }
+        }
+
+        // B. 矿工狂热 (Miner's Frenzy)
+        if (player.getMainHandStack().getItem() instanceof PickaxeItem) {
+            String id = net.minecraft.registry.Registries.BLOCK.getId(block.getBlock()).getPath();
+            // 简单的关键词匹配
+            boolean isStoneType = id.contains("stone") || id.contains("deepslate") || id.contains("diorite") ||
+                    id.contains("andesite") || id.contains("granite");
+
+            if (isStoneType && minerFrenzyLevel > 0) {
+                // 提升倍率
+                float multiplier = 1.0f + (minerFrenzyLevel * 0.9f);
+                speed *= multiplier;
+            }
+        }
+
+        cir.setReturnValue(speed);
     }
 
     @Unique

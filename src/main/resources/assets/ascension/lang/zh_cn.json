@@ -172,6 +172,31 @@
   "skill.ascension.pocket_furnace.desc": "自动烧制物品栏最后一格的物品，效率较低",
   "skill.ascension.pocket_furnace.desc.2": "自动烧制物品栏最后一格的物品，效率中等",
 
+  "skill.ascension.lumberjack": "森林主宰",
+  "skill.ascension.lumberjack.desc": "小幅提升破坏原木和树叶的效率",
+  "skill.ascension.lumberjack.desc.2": "中幅提升破坏原木和树叶的效率",
+  "skill.ascension.lumberjack.desc.3": "大幅提升破坏原木和树叶的效率",
+
+  "skill.ascension.miner_frenzy": "矿工狂热",
+  "skill.ascension.miner_frenzy.desc": "小幅提升挖掘岩石的效率",
+  "skill.ascension.miner_frenzy.desc.2": "中幅提升挖掘岩石的效率",
+  "skill.ascension.miner_frenzy.desc.3": "大幅提升挖掘岩石的效率",
+
+  "skill.ascension.hephaestus_favor": "赫菲斯托斯眷顾",
+  "skill.ascension.hephaestus_favor.desc": "挖掘花岗岩/安山岩/闪长岩时有 35% 概率掉落石英。",
+  "skill.ascension.hephaestus_favor.desc.2": "掉落石英概率提升至 70%。",
+  "skill.ascension.hephaestus_favor.desc.3": "概率提升至 70%，且额外有概率掉落粗铁。",
+
+  "skill.ascension.gold_panning": "淘金",
+  "skill.ascension.gold_panning.desc": "使用锹右键沙子可消耗4点耐久淘金，每次有5%的概率找到金锭！概率受镐子品质和时运加成。",
+  "skill.ascension.gold_panning.desc.2": "使用锹右键沙子可消耗4点耐久淘金，每次有7%的概率找到金锭！概率受镐子品质和时运加成。",
+  "skill.ascension.gold_panning.desc.3": "使用锹右键沙子可消耗4点耐久淘金，每次有9%的概率找到金锭！概率受镐子品质和时运加成。",
+  "skill.ascension.gold_panning.desc.4": "使用锹右键沙子可消耗4点耐久淘金，每次有11%的概率找到金锭！概率受镐子品质和时运加成。",
+  "skill.ascension.gold_panning.desc.5": "使用锹右键沙子可消耗4点耐久淘金，每次有13%的概率找到金锭！概率受镐子品质和时运加成。",
+  "skill.ascension.gold_panning.desc.6": "使用锹右键沙子可消耗4点耐久淘金，每次有15%的概率找到金锭！概率受镐子品质和时运加成。",
+  "skill.ascension.gold_panning.desc.7": "使用锹右键沙子可消耗4点耐久淘金，每次有17%的概率找到金锭！概率受镐子品质和时运加成。",
+  "skill.ascension.gold_panning.desc.8": "使用锹右键沙子可消耗4点耐久淘金，每次有19%的概率找到金锭！概率受镐子品质和时运加成。",
+
   "skill.ascension.swift_move": "迅猛攻势",
   "skill.ascension.swift_move.desc": "加速",
   "skill.ascension.swift_move.desc.2": "加速+",
@@ -187,5 +212,13 @@
   "criterion.ascension.brew_fire_res": "从酿造台取出 %s 瓶抗火药水",
   "criterion.ascension.swim_lava": "在熔浆中游泳 %s 米",
   "criterion.ascension.kill_burning_skeleton": "击杀 %s 只燃烧中的骷髅",
-  "criterion.ascension.take_fire_damage": "累计承受 %s 点火焰伤害"
+  "criterion.ascension.take_fire_damage": "累计承受 %s 点火焰伤害",
+  "criterion.ascension.use_stone_bricks": "放置 %s 个石砖",
+  "criterion.ascension.find_mineshaft": "探索废弃矿井",
+  "criterion.ascension.mine_amethyst": "挖掘 %s 个紫水晶簇",
+  "criterion.ascension.collect_logs": "收集 %s 种不同的原木",
+  "criterion.ascension.mine_deepslate": "挖掘 %s 个深板岩",
+  "criterion.ascension.walk_bedrock": "在基岩上行走 %s 米",
+  "criterion.ascension.smelt_glass": "烧制 %s 个玻璃",
+  "criterion.ascension.collect_stained_glass": "收集 %s 种染色玻璃"
 }

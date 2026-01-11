@@ -105,7 +105,6 @@ public class SkillOpCommands {
             if (!skillId.equals("all") && !skill.id.equals(skillId)) continue;
 
             // 如果 targetLevel 是 -1，遍历所有等级；否则只处理指定等级
-            // 注意：criteriaMap 的 key 是等级 (1, 2, 3...)
             for (int lvl = 1; lvl <= skill.maxLevel; lvl++) {
                 if (targetLevel != -1 && targetLevel != lvl) continue;
 
@@ -114,12 +113,19 @@ public class SkillOpCommands {
                     player.getStatHandler().setStat(player, c.getStat(), targetValue);
                 }
             }
+            // === 撤销条件时同时锁定技能 ===
+            // 如果执行的是 revoke 操作 (!grant)，则强制将技能等级设为 0
+            if (!grant) {
+                // 这里不需要 isSkillActive 判断，直接重置最安全
+                PacketUtils.setSkillLevel(player, skill.id, 0);
+            }
         }
-
-        // === 核心修复：强制发包同步 ===
+        // 强制发包同步
         PacketUtils.syncSkillData(player);
+        // 刷新属性 (防止技能被锁定后属性还在)
+        SkillEffectHandler.refreshAttributes(player);
 
-        context.getSource().sendFeedback(() -> Text.of(grant ? "§a已达成解锁条件 (UI已刷新)" : "§c已重置解锁条件 (UI已刷新)"), true);
+        context.getSource().sendFeedback(() -> Text.of(grant ? "§a已达成解锁条件 (UI已刷新)" : "§c已重置解锁条件并锁定技能 (UI已刷新)"), true);
         return 1;
     }
 }

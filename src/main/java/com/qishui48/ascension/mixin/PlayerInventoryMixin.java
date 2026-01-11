@@ -1,5 +1,6 @@
 package com.qishui48.ascension.mixin;
 
+import com.qishui48.ascension.Ascension;
 import com.qishui48.ascension.util.IEntityDataSaver;
 import com.qishui48.ascension.util.PacketUtils;
 import net.minecraft.entity.player.PlayerEntity;
@@ -10,9 +11,11 @@ import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtString;
 import net.minecraft.registry.Registries;
+import net.minecraft.registry.tag.ItemTags;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
+import net.minecraft.stat.Stats;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Rarity;
@@ -77,6 +80,49 @@ public abstract class PlayerInventoryMixin {
             }
         }
 
+        // 森林主宰：追踪原木种类
+        // 检查物品是否属于原木标签 (minecraft:logs)
+        if (stack.isIn(ItemTags.LOGS)) {
+            NbtList collectedLogs;
+            if (nbt.contains("collected_log_types", NbtElement.LIST_TYPE)) {
+                collectedLogs = nbt.getList("collected_log_types", NbtElement.STRING_TYPE);
+            } else {
+                collectedLogs = new NbtList();
+            }
+
+            // 查重：如果我们还没记录过这种原木
+            if (!containsString(collectedLogs, itemId)) {
+                collectedLogs.add(NbtString.of(itemId));
+                nbt.put("collected_log_types", collectedLogs);
+
+                // 增加统计数据 (触发技能解锁判断)
+                serverPlayer.getStatHandler().increaseStat(serverPlayer, Stats.CUSTOM.getOrCreateStat(Ascension.COLLECT_LOG_VARIANTS), 1);
+            }
+        }
+        // 淘金：追踪染色玻璃种类
+        // 检查是否是染色玻璃 (tag: c:glass_blocks 或者直接判断 instanceof StainedGlassBlock)
+        // 简单判断：Item 名字包含 "stained_glass" 且不包含 "pane" (板)
+        // 或者更严谨：Registry检查
+        if (stack.getItem() instanceof net.minecraft.item.BlockItem blockItem &&
+                blockItem.getBlock() instanceof net.minecraft.block.StainedGlassBlock) {
+
+            NbtList collectedGlass;
+            if (nbt.contains("collected_stained_glass_types", NbtElement.LIST_TYPE)) {
+                collectedGlass = nbt.getList("collected_stained_glass_types", NbtElement.STRING_TYPE);
+            } else {
+                collectedGlass = new NbtList();
+            }
+
+            if (!containsString(collectedGlass, itemId)) {
+                collectedGlass.add(NbtString.of(itemId));
+                nbt.put("collected_stained_glass_types", collectedGlass);
+
+                // 更新统计数据：设为当前收集的总数量
+                int count = collectedGlass.size();
+                serverPlayer.getStatHandler().setStat(serverPlayer, Stats.CUSTOM.getOrCreateStat(Ascension.COLLECT_STAINED_GLASS), count);
+            }
+        }
+
         // 5. === 是新物品！===
 
         // A. 记录
@@ -128,5 +174,13 @@ public abstract class PlayerInventoryMixin {
                 .append(" ")
                 .append(Text.translatable("notification.ascension.suffix.points", pointsAwarded).formatted(Formatting.BOLD, Formatting.GREEN));
         PacketUtils.sendNotification(serverPlayer, msg);
+    }
+    // 辅助方法：检查 List 是否包含字符串
+    @Unique
+    private boolean containsString(NbtList list, String str) {
+        for (NbtElement e : list) {
+            if (e.asString().equals(str)) return true;
+        }
+        return false;
     }
 }
