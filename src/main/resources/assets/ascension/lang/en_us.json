@@ -172,6 +172,31 @@
   "skill.ascension.pocket_furnace.desc": "Auto-smelts the item in the last hotbar slot. Low efficiency.",
   "skill.ascension.pocket_furnace.desc.2": "Auto-smelts the item in the last hotbar slot. Medium efficiency.",
 
+  "skill.ascension.lumberjack": "Lumberjack",
+  "skill.ascension.lumberjack.desc": "Slightly increases mining speed for logs and leaves.",
+  "skill.ascension.lumberjack.desc.2": "Moderately increases mining speed for logs and leaves.",
+  "skill.ascension.lumberjack.desc.3": "Significantly increases mining speed for logs and leaves.",
+
+  "skill.ascension.miner_frenzy": "Miner's Frenzy",
+  "skill.ascension.miner_frenzy.desc": "Slightly increases mining speed for stone-type blocks.",
+  "skill.ascension.miner_frenzy.desc.2": "Moderately increases mining speed for stone-type blocks.",
+  "skill.ascension.miner_frenzy.desc.3": "Significantly increases mining speed for stone-type blocks.",
+
+  "skill.ascension.hephaestus_favor": "Hephaestus's Favor",
+  "skill.ascension.hephaestus_favor.desc": "35% chance to drop Quartz when mining Granite, Andesite, or Diorite.",
+  "skill.ascension.hephaestus_favor.desc.2": "Increases Quartz drop chance to 70%.",
+  "skill.ascension.hephaestus_favor.desc.3": "Increases drop chance to 70%, and adds a chance to drop Raw Iron.",
+
+  "skill.ascension.gold_panning": "Gold Panning",
+  "skill.ascension.gold_panning.desc": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (5% chance)! Chance affected by Fortune.",
+  "skill.ascension.gold_panning.desc.2": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (7% chance)! Chance affected by Fortune.",
+  "skill.ascension.gold_panning.desc.3": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (9% chance)! Chance affected by Fortune.",
+  "skill.ascension.gold_panning.desc.4": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (11% chance)! Chance affected by Fortune.",
+  "skill.ascension.gold_panning.desc.5": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (13% chance)! Chance affected by Fortune.",
+  "skill.ascension.gold_panning.desc.6": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (15% chance)! Chance affected by Fortune.",
+  "skill.ascension.gold_panning.desc.7": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (17% chance)! Chance affected by Fortune.",
+  "skill.ascension.gold_panning.desc.8": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (19% chance)! Chance affected by Fortune.",
+
   "skill.ascension.swift_move": "Swift Offensive",
   "skill.ascension.swift_move.desc": "Movement Speed +",
   "skill.ascension.swift_move.desc.2": "Movement Speed ++",
@@ -187,5 +212,13 @@
   "criterion.ascension.brew_fire_res": "Brewed %s Fire Resistance Potions",
   "criterion.ascension.swim_lava": "Swam %s meters in lava",
   "criterion.ascension.kill_burning_skeleton": "Killed %s burning Skeletons",
-  "criterion.ascension.take_fire_damage": "Took %s points of fire damage"
+  "criterion.ascension.take_fire_damage": "Took %s points of fire damage",
+  "criterion.ascension.use_stone_bricks": "Placed %s Stone Bricks",
+  "criterion.ascension.find_mineshaft": "Discovered a Mineshaft",
+  "criterion.ascension.mine_amethyst": "Mined %s Amethyst Clusters",
+  "criterion.ascension.collect_logs": "Collected %s different types of Logs",
+  "criterion.ascension.mine_deepslate": "Mined %s Deepslate",
+  "criterion.ascension.walk_bedrock": "Walked %s meters on Bedrock",
+  "criterion.ascension.smelt_glass": "Smelted %s Glass",
+  "criterion.ascension.collect_stained_glass": "Collected %s types of Stained Glass"
 }
