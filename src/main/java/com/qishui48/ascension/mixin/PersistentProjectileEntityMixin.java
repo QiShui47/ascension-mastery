@@ -80,7 +80,7 @@ public abstract class PersistentProjectileEntityMixin implements IModProjectile 
         PersistentProjectileEntity arrow = (PersistentProjectileEntity) (Object) this;
         World world = arrow.getWorld();
 
-        // 【修复1】在这里统一定义 pos，这样下面所有的 if 都能用
+        // 在这里统一定义 pos，这样下面所有的 if 都能用
         BlockPos pos = blockHitResult.getBlockPos();
 
         if (!world.isClient) {
@@ -150,7 +150,7 @@ public abstract class PersistentProjectileEntityMixin implements IModProjectile 
             if (this.isPocketCatArrow) {
                 BlockPos placePos = pos.offset(blockHitResult.getSide());
 
-                // 【修复2】在这里单独获取 owner 并检查类型
+                // 在这里单独获取 owner 并检查类型
                 Entity rawOwner = arrow.getOwner();
 
                 // 只有当主人是玩家时才生成（为了防止奇怪的Bug）
@@ -163,7 +163,7 @@ public abstract class PersistentProjectileEntityMixin implements IModProjectile 
 
                             // 驯服逻辑
                             cat.setTamed(true);
-                            cat.setOwner(playerOwner); // 使用我们刚刚转换好的 playerOwner
+                            cat.setOwner(playerOwner); // 使用刚刚转换好的 playerOwner
 
                             // 随机花色
                             cat.initialize(world.getServer().getWorld(world.getRegistryKey()), world.getLocalDifficulty(placePos), net.minecraft.entity.SpawnReason.TRIGGERED, null, null);

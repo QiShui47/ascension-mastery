@@ -17,7 +17,9 @@
 		"BrewingStandSlotMixin",
 		"ServerStatHandlerMixin",
 		"AbstractBlockMixin",
-		"ShovelItemMixin"
+		"ShovelItemMixin",
+		"AbstractFurnaceBlockEntityMixin",
+		"AbstractFurnaceBlockEntityAccessor"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -10,7 +10,9 @@ import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.HungerManager;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.inventory.SimpleInventory;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.item.PickaxeItem;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
@@ -179,10 +181,37 @@ public abstract class PlayerEntityMixin {
         }
     }
 
+    @Unique private double lastNetherX, lastNetherY, lastNetherZ;
+    @Unique private boolean initializedNetherPos = false;
+
     // 监听吃东西
     @Inject(method = "eatFood", at = @At("HEAD"))
     private void onEatFood(World world, ItemStack stack, CallbackInfoReturnable<ItemStack> cir) {
         if (!world.isClient && (Object)this instanceof ServerPlayerEntity serverPlayer) {
+
+            // === 火锅食客 (Hotpot Diner) ===
+            if (PacketUtils.isSkillActive(serverPlayer, "hotpot_diner")) {
+                // 检查是否是熟肉 (列举常见熟肉)
+                Item item = stack.getItem();
+                boolean isCookedMeat = (item == Items.COOKED_BEEF || item == Items.COOKED_PORKCHOP ||
+                        item == Items.COOKED_MUTTON || item == Items.COOKED_CHICKEN ||
+                        item == Items.COOKED_RABBIT);
+
+                if (isCookedMeat) {
+                    int level = PacketUtils.getSkillLevel(serverPlayer, "hotpot_diner");
+                    // 概率: Lv1=10%, Lv2=20%, Lv3=30%
+                    float chance = level * 0.1f;
+
+                    if (serverPlayer.getRandom().nextFloat() < chance) {
+                        // 恢复 3 颗心 (6点)
+                        serverPlayer.heal(6.0f);
+                        // 播放奖励音效
+                        world.playSound(null, serverPlayer.getX(), serverPlayer.getY(), serverPlayer.getZ(),
+                                SoundEvents.BLOCK_FIRE_EXTINGUISH, SoundCategory.PLAYERS, 0.5f, 1.0f); // 嘶啦声
+                    }
+                }
+            }
+
             String foodId = Registries.ITEM.getId(stack.getItem()).toString();
 
             IEntityDataSaver dataSaver = (IEntityDataSaver) serverPlayer;
@@ -261,6 +290,38 @@ public abstract class PlayerEntityMixin {
                         serverPlayer.getStatHandler().increaseStat(serverPlayer, Stats.CUSTOM.getOrCreateStat(Ascension.WALK_ON_BEDROCK), cmMoved);
                     }
                 }
+            }
+
+            // === [新增] 下界旅行检测 (每 Tick 检测) ===
+            // 只有在下界时才计算
+            if (player.getWorld().getRegistryKey() == World.NETHER) {
+                if (!initializedNetherPos) {
+                    lastNetherX = player.getX();
+                    lastNetherY = player.getY();
+                    lastNetherZ = player.getZ();
+                    initializedNetherPos = true;
+                }
+
+                double nether_dx = player.getX() - lastNetherX;
+                double nether_dy = player.getY() - lastNetherY;
+                double nether_dz = player.getZ() - lastNetherZ;
+                // 计算三维距离
+                double nether_distSqr = nether_dx*nether_dx + nether_dy*nether_dy + nether_dz*nether_dz;
+
+                if (nether_distSqr > 0.0001) {
+                    int cmMoved = (int)(Math.sqrt(nether_distSqr) * 100.0);
+                    if (cmMoved > 0) {
+                        serverPlayer.getStatHandler().increaseStat(serverPlayer, Stats.CUSTOM.getOrCreateStat(Ascension.TRAVEL_NETHER), cmMoved);
+                    }
+                }
+
+                // 更新坐标
+                lastNetherX = player.getX();
+                lastNetherY = player.getY();
+                lastNetherZ = player.getZ();
+            } else {
+                // 如果离开了下界，重置初始化标志，以便下次进入时重新锚定
+                initializedNetherPos = false;
             }
 
             // 2. 获取当前群系 ID

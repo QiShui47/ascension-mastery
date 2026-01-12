@@ -19,7 +19,7 @@ public class SkillRegistry {
         // === Tier 1 ===
         register(new Skill("combat", Items.IRON_SWORD, 1, "root", 1, 2));
         register(new Skill("survival",  Items.APPLE, 1, "root", 1, 2));
-        register(new Skill("mining",  Items.IRON_PICKAXE, 1, "root", 1, 2));
+        register(new Skill("mining",  Items.WOODEN_PICKAXE, 1, "root", 1, 2));
 
         // ==========================================================
         // === Survival Branch (生存系) ===
@@ -38,11 +38,16 @@ public class SkillRegistry {
                 .addCriterion(new UnlockCriterion(Stats.USED, Items.BREAD, 16, "criterion.ascension.eat_bread"))
                 .addUpgradeCriterion(2, new UnlockCriterion(Stats.USED, Items.POISONOUS_POTATO, 1, "criterion.ascension.eat_poison_potato")));
 
-        // 移动速度 (Tier 2)
+        // 脚底抹油 (Tier 2)
         register(new Skill("swift_move", Items.LEATHER_BOOTS, 2, "survival", 3, 5, 7, 10));
 
+        // 火锅食客 (Tier 2)
+        register(new Skill("hotpot_diner", Items.COOKED_BEEF, 2, "survival", 3, 5, 7, 10)
+                .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.COOK_IN_SMOKER, 16, "criterion.ascension.cook_smoker"))
+                .addUpgradeCriterion(3, new UnlockCriterion(Stats.CUSTOM, Ascension.TRAVEL_NETHER, 100000, "criterion.ascension.travel_nether").setDisplayDivisor(100.0)));
+
         // 饥饿耐受 (Tier 3)
-        register(new Skill("hunger_tolerance", Items.COOKED_BEEF, 3, "survival", 1, 15));
+        register(new Skill("hunger_tolerance", Items.COOKED_CHICKEN, 3, "hotpot_diner", 1, 15));
 
         // 饥饿体质 (Tier 4)
         register(new Skill("hunger_constitution", Items.ROTTEN_FLESH, 4, "hunger_tolerance", 2, 15));
@@ -59,8 +64,7 @@ public class SkillRegistry {
 
         // 1. 火焰抵抗 (Fire Resistance) - Tier 2 (前置)
         register(new Skill("fire_resistance", Items.MAGMA_CREAM, 2, "combat", 2, 15, 25)
-                .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.BREW_FIRE_RES_POTION, 1, "criterion.ascension.brew_fire_res"))
-                .addUpgradeCriterion(2, new UnlockCriterion(Stats.CUSTOM, Ascension.SWIM_IN_LAVA, 1, "criterion.ascension.brew_fire_res")));
+                .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.BREW_FIRE_RES_POTION, 1, "criterion.ascension.brew_fire_res")));
 
         // 2. 左分支：火焰感染 (Fire Infection) - Tier 3
         register(new Skill("fire_infection", Items.BLAZE_POWDER, 3, "fire_resistance", 1, 15)
@@ -101,16 +105,11 @@ public class SkillRegistry {
         register(new Skill("pocket_furnace", Items.FURNACE, 2, "mining", 2, 15,20));
 
         // 赫菲斯托斯眷顾 (Hephaestus's Favor)
-        // 解锁：挖掘 64 个深板岩
-        // Lv2：无条件 (只需要技能点)
-        // Lv3：在基岩上行走 100 米 (10000 cm)
         register(new Skill("hephaestus_favor", Items.QUARTZ, 3, "miner_frenzy", 3, 15, 15, 20)
                 .addCriterion(new UnlockCriterion(Stats.MINED, net.minecraft.block.Blocks.DEEPSLATE, 64, "criterion.ascension.mine_deepslate"))
                 .addUpgradeCriterion(3, new UnlockCriterion(Stats.CUSTOM, Ascension.WALK_ON_BEDROCK, 10000, "criterion.ascension.walk_bedrock").setDisplayDivisor(100.0)));
 
         // 淘金 (Gold Panning)
-        // 解锁：烧制(Crafted) 64 个玻璃 (Minecraft 统计里，从熔炉取出成品算作 Crafted)
-        // 升级：收集不同颜色的染色玻璃。Lv2=2种, Lv3=4种 ... Lv8=14种
         Skill goldPanning = new Skill("gold_panning", Items.GOLD_NUGGET, 2, "mining", 8, 5, 10, 10, 10, 10, 10, 10, 10);
         goldPanning.addCriterion(new UnlockCriterion(Stats.CRAFTED, Items.GLASS, 64, "criterion.ascension.smelt_glass"));
         for (int i = 2; i <= 8; i++) {
@@ -133,6 +132,13 @@ public class SkillRegistry {
                 .addUpgradeCriterion(2, new UnlockCriterion(Stats.CUSTOM, Ascension.EXPLORE_MINESHAFT, 1, "criterion.ascension.find_mineshaft"))
                 // Lv3 条件：挖掘紫水晶簇
                 .addUpgradeCriterion(3, new UnlockCriterion(Stats.MINED, net.minecraft.block.Blocks.AMETHYST_CLUSTER, 1, "criterion.ascension.mine_amethyst")));
+
+        // 学术派矿工 (Academic Miner)
+        Skill academicMiner = new Skill("academic_miner", Items.IRON_PICKAXE, 3, "miner_frenzy", 2, 5, 10);
+        academicMiner.addCriterion(new UnlockCriterion(Stats.CUSTOM, Stats.MINECART_ONE_CM, 10000, "criterion.ascension.minecart_travel").setDisplayDivisor(100.0));
+        academicMiner.addUpgradeCriterion(2, new UnlockCriterion(Stats.MINED, net.minecraft.block.Blocks.EMERALD_ORE, 1, "criterion.ascension.mine_emerald_ore"));
+        academicMiner.addUpgradeCriterion(2, new UnlockCriterion(Stats.MINED, net.minecraft.block.Blocks.DEEPSLATE_EMERALD_ORE, 1, "criterion.ascension.mine_emerald_ore"));
+        register(academicMiner);
 
         // 计算布局
         calculateLayout();
