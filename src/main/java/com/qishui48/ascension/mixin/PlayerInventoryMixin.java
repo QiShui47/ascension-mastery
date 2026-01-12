@@ -6,6 +6,7 @@ import com.qishui48.ascension.util.PacketUtils;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
@@ -121,6 +122,12 @@ public abstract class PlayerInventoryMixin {
                 int count = collectedGlass.size();
                 serverPlayer.getStatHandler().setStat(serverPlayer, Stats.CUSTOM.getOrCreateStat(Ascension.COLLECT_STAINED_GLASS), count);
             }
+        }
+        // === 糖分主理人：蜂蜜瓶收集 ===
+        if (stack.getItem() == Items.HONEY_BOTTLE) {
+            // 直接增加统计数据，每获得一个就加 1
+            // 这里 stack.getCount() 可能是一组，我们要全部加上
+            serverPlayer.getStatHandler().increaseStat(serverPlayer, Stats.CUSTOM.getOrCreateStat(Ascension.COLLECT_HONEY), stack.getCount());
         }
 
         // 5. === 是新物品！===

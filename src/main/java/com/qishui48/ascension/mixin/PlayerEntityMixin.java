@@ -10,10 +10,7 @@ import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.HungerManager;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.inventory.SimpleInventory;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.item.PickaxeItem;
+import net.minecraft.item.*;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtString;
@@ -46,6 +43,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import static com.qishui48.ascension.skill.SkillEffectHandler.applySugarMasterEffect;
+
 @Mixin(PlayerEntity.class)
 public abstract class PlayerEntityMixin {
 
@@ -56,7 +55,7 @@ public abstract class PlayerEntityMixin {
     @Unique private ItemStack lastSmeltingStack = ItemStack.EMPTY;
 
     // 隐藏技能相关变量
-    @Unique private double lastX, lastY, lastZ;
+    @Unique private double hb_lastX, hb_lastY, hb_lastZ;
     @Unique private boolean initializedPos = false;
 
     @Inject(method = "tick", at = @At("HEAD"))
@@ -66,7 +65,7 @@ public abstract class PlayerEntityMixin {
         if (!player.getWorld().isClient && player instanceof ServerPlayerEntity serverPlayer) {
             int currentFood = this.getHungerManager().getFoodLevel();
 
-            // 1. 饥饿体质逻辑
+            // 饥饿体质逻辑
             if (currentFood < this.lastFoodLevel) {
                 int level = PacketUtils.getSkillLevel(serverPlayer, "hunger_constitution");
                 if (level > 0) {
@@ -76,18 +75,18 @@ public abstract class PlayerEntityMixin {
             }
             this.lastFoodLevel = currentFood;
 
-            // 2. === 新增：饥饿爆发 (Hidden Skill) 逻辑与发现机制 ===
+            // 饥饿爆发 (Hidden Skill) 逻辑与发现机制
 
             // 初始化位置
             if (!initializedPos) {
-                lastX = player.getX();
-                lastY = player.getY();
-                lastZ = player.getZ();
+                hb_lastX = player.getX();
+                hb_lastY = player.getY();
+                hb_lastZ = player.getZ();
                 initializedPos = true;
             }
 
             // 计算位移距离
-            double distSqr = player.squaredDistanceTo(lastX, lastY, lastZ);
+            double distSqr = player.squaredDistanceTo(hb_lastX, hb_lastY, hb_lastZ);
 
             // 只有在饱食度为 0 且移动时才计算
             if (currentFood == 0 && distSqr > 0) {
@@ -115,9 +114,9 @@ public abstract class PlayerEntityMixin {
             }
 
             // 更新位置
-            lastX = player.getX();
-            lastY = player.getY();
-            lastZ = player.getZ();
+            hb_lastX = player.getX();
+            hb_lastY = player.getY();
+            hb_lastZ = player.getZ();
         }
     }
 
@@ -212,6 +211,14 @@ public abstract class PlayerEntityMixin {
                 }
             }
 
+            // === 糖分主理人逻辑（南瓜派部分） ===
+            if (PacketUtils.isSkillActive(serverPlayer, "sugar_master")) {
+                Item item = stack.getItem();
+                if (item == Items.PUMPKIN_PIE) {
+                    applySugarMasterEffect(serverPlayer, item.getFoodComponent());
+                }
+            }
+
             String foodId = Registries.ITEM.getId(stack.getItem()).toString();
 
             IEntityDataSaver dataSaver = (IEntityDataSaver) serverPlayer;
@@ -255,6 +262,9 @@ public abstract class PlayerEntityMixin {
 
     @Unique private double lastBedrockX, lastBedrockZ;
     @Unique private boolean initializedBedrockPos = false;
+    @Unique private double lastX, lastY, lastZ;
+    // 用于人力发电机的累积计数器
+    @Unique private float dynamoDistAccumulator = 0;
     @Inject(method = "tick", at = @At("HEAD"))
     private void onTickEnvironmentCheck(CallbackInfo ci) {
         PlayerEntity player = (PlayerEntity) (Object) this;
@@ -273,7 +283,7 @@ public abstract class PlayerEntityMixin {
             // Calculate distance moved since last tick (Horizontal only)
             double dx = player.getX() - lastBedrockX;
             double dz = player.getZ() - lastBedrockZ;
-            double distSqr = dx * dx + dz * dz;
+            double br_distSqr = dx * dx + dz * dz;
 
             // Update last position for next tick
             lastBedrockX = player.getX();
@@ -281,11 +291,11 @@ public abstract class PlayerEntityMixin {
 
             // Logic: Must be on ground, moving, and standing on Bedrock
             // Threshold 0.0001 to avoid jitter counting
-            if (player.isOnGround() && distSqr > 0.0001) {
+            if (player.isOnGround() && br_distSqr > 0.0001) {
                 net.minecraft.util.math.BlockPos groundPos = player.getBlockPos().down();
                 if (player.getWorld().getBlockState(groundPos).isOf(net.minecraft.block.Blocks.BEDROCK)) {
                     // Convert blocks to cm (1 block = 100 cm)
-                    int cmMoved = (int) (Math.sqrt(distSqr) * 100.0);
+                    int cmMoved = (int) (Math.sqrt(br_distSqr) * 100.0);
                     if (cmMoved > 0) {
                         serverPlayer.getStatHandler().increaseStat(serverPlayer, Stats.CUSTOM.getOrCreateStat(Ascension.WALK_ON_BEDROCK), cmMoved);
                     }
@@ -323,6 +333,57 @@ public abstract class PlayerEntityMixin {
                 // 如果离开了下界，重置初始化标志，以便下次进入时重新锚定
                 initializedNetherPos = false;
             }
+
+            if (!initializedPos) {
+                lastX = player.getX();
+                lastY = player.getY();
+                lastZ = player.getZ();
+                initializedPos = true;
+            }
+
+            double distSqr = player.squaredDistanceTo(lastX, lastY, lastZ);
+
+            // 只有移动了才计算
+            if (distSqr > 0.0001) {
+                double distCm = Math.sqrt(distSqr) * 100.0;
+
+                // 1. 维度里程统计 (用于解锁技能)
+                Identifier dimId = player.getWorld().getRegistryKey().getValue();
+                if (dimId.equals(new Identifier("minecraft:overworld"))) {
+                    serverPlayer.getStatHandler().increaseStat(serverPlayer, Stats.CUSTOM.getOrCreateStat(Ascension.TRAVEL_OVERWORLD), (int)distCm);
+                } else if (dimId.equals(new Identifier("minecraft:the_nether"))) {
+                    // 原有的 TRAVEL_NETHER 统计也可以复用，以后重构
+                    serverPlayer.getStatHandler().increaseStat(serverPlayer, Stats.CUSTOM.getOrCreateStat(Ascension.TRAVEL_NETHER), (int)distCm);
+                } else if (dimId.equals(new Identifier("minecraft:the_end"))) {
+                    serverPlayer.getStatHandler().increaseStat(serverPlayer, Stats.CUSTOM.getOrCreateStat(Ascension.TRAVEL_END), (int)distCm);
+                }
+
+                // 2. 人力发电机效果
+                if (PacketUtils.isSkillActive(serverPlayer, "human_dynamo")) {
+                    dynamoDistAccumulator += distCm;
+
+                    // 100米 = 10000cm
+                    if (dynamoDistAccumulator >= 10000) {
+                        int level = PacketUtils.getSkillLevel(serverPlayer, "human_dynamo");
+                        int xpAmount = 0;
+                        if (level == 1) xpAmount = 5;
+                        else if (level == 2) xpAmount = 8;
+                        else if (level >= 3) xpAmount = 11;
+
+                        player.addExperience(xpAmount);
+                        // 播放轻微的音效提示
+                        player.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 0.3f, 2.0f);
+
+                        // 减去 100米，保留余数
+                        dynamoDistAccumulator -= 10000;
+                    }
+                }
+            }
+
+            // 更新坐标
+            lastX = player.getX();
+            lastY = player.getY();
+            lastZ = player.getZ();
 
             // 2. 获取当前群系 ID
             // getBiome 返回的是 RegistryEntry，需要取 Key

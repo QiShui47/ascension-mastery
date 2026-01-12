@@ -96,6 +96,47 @@ public class SkillEffectHandler {
         }
     }
 
+    // === [新增] 糖分主理人：应用效果 ===
+    public static void applySugarMasterEffect(net.minecraft.server.network.ServerPlayerEntity player, net.minecraft.item.FoodComponent food) {
+        if (food == null) return;
+
+        int level = PacketUtils.getSkillLevel(player, "sugar_master");
+        if (level <= 0) return; // 没技能就不处理
+
+        // 1. 计算原本会获得的饱和度
+        // 原版公式: nutrition * saturationModifier * 2.0
+        float baseSat = food.getHunger() * food.getSaturationModifier() * 2.0f;
+        // 2. 计算额外饱和度 (每级 +1.5)
+        float extraSat = level * 1.5f;
+        // 3. 计算逻辑
+        int currentFood = player.getHungerManager().getFoodLevel();
+        float currentSat = player.getHungerManager().getSaturationLevel();
+        // 吃完后的饱食度 (上限20)
+        int newFood = Math.min(currentFood + food.getHunger(), 20);
+        // 理论上的总饱和度
+        float projectedSat = currentSat + baseSat + extraSat;
+        // 实际能存下的饱和度 (原版规则：饱和度不能超过当前饱食度)
+        float cappedSat = Math.min(projectedSat, newFood);
+        // 溢出部分
+        float overflow = projectedSat - newFood;
+        // Level 3 特权：溢出转化生命
+        if (level >= 3 && overflow > 0) {
+            // 每 3.0 饱和度 -> 恢复 0.5 心 (1.0 HP)
+            int healTicks = (int) (overflow / 3.0f);
+            if (healTicks > 0) {
+                player.heal(healTicks * 1.0f);
+                player.getWorld().playSound(null, player.getBlockPos(), SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.PLAYERS, 0.5f, 2.0f);
+            }
+        }
+
+        final float finalSaturation = cappedSat;
+        player.getServer().execute(() -> {
+            if (player.isAlive()) {
+                player.getHungerManager().setSaturationLevel(finalSaturation);
+            }
+        });
+    }
+
     public static void onSkillUnlocked(ServerPlayerEntity player, String skillId) {
         player.playSound(SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.PLAYERS, 1.0f, 2.0f);
 

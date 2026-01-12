@@ -309,39 +309,47 @@ public class SkillTreeScreen extends Screen {
         }
     }
 
+    // 替换整个 renderSkillTooltip 方法
     private void renderSkillTooltip(DrawContext context, int mouseX, int mouseY, Skill skill) {
         int currentLevel = getLevel(skill.id);
         boolean isRevealed = isRevealed(skill.id);
         boolean isMaxed = currentLevel >= skill.maxLevel;
         boolean isUnlocked = currentLevel > 0;
 
-        List<Text> tooltip = new ArrayList<>();
+        // 改用 OrderedText 以支持自动换行
+        List<net.minecraft.text.OrderedText> tooltip = new ArrayList<>();
+
+        // 1. 标题
+        tooltip.add(skill.getName().copy().formatted(Formatting.YELLOW).asOrderedText());
+
+        // 2. 描述 (自动换行核心)
         Text desc = isMaxed ? skill.getDescription(Math.max(1, currentLevel)) : skill.getDescription(Math.max(1, currentLevel + 1));
-        tooltip.add(skill.getName().copy().formatted(Formatting.YELLOW));
-        tooltip.add(desc.copy().formatted(Formatting.GRAY));
+        // 设置最大宽度为 160 像素，自动拆行
+        List<net.minecraft.text.OrderedText> wrappedDesc = this.textRenderer.wrapLines(desc.copy().formatted(Formatting.GRAY), 160);
+        tooltip.addAll(wrappedDesc);
 
-        // 等级显示 (使用翻译键)
-        tooltip.add(Text.translatable("gui.ascension.tooltip.level", currentLevel, skill.maxLevel).formatted(Formatting.GRAY));
+        // 3. 等级
+        tooltip.add(Text.translatable("gui.ascension.tooltip.level", currentLevel, skill.maxLevel).formatted(Formatting.GRAY).asOrderedText());
 
-        // === 启用状态提示 ===
+        // 4. 状态提示
         if (isUnlocked) {
             if (isSkillDisabled(skill.id)) {
                 tooltip.add(Text.translatable("gui.ascension.tooltip.status.disabled").formatted(Formatting.RED)
                         .append(" ")
-                        .append(Text.translatable("gui.ascension.tooltip.hint.enable").formatted(Formatting.GRAY)));
+                        .append(Text.translatable("gui.ascension.tooltip.hint.enable").formatted(Formatting.GRAY)).asOrderedText());
             } else {
                 tooltip.add(Text.translatable("gui.ascension.tooltip.status.enabled").formatted(Formatting.GREEN)
                         .append(" ")
-                        .append(Text.translatable("gui.ascension.tooltip.hint.disable").formatted(Formatting.GRAY)));
+                        .append(Text.translatable("gui.ascension.tooltip.hint.disable").formatted(Formatting.GRAY)).asOrderedText());
             }
         }
 
         // 隐藏技能提示
         if (skill.isHidden && isRevealed && currentLevel == 0) {
-            tooltip.add(Text.translatable("gui.ascension.tooltip.hidden_revealed").formatted(Formatting.GOLD));
+            tooltip.add(Text.translatable("gui.ascension.tooltip.hidden_revealed").formatted(Formatting.GOLD).asOrderedText());
         }
 
-        // === [新增] 互斥锁定提示 ===
+        // 互斥锁定提示
         boolean isMutexLocked = false;
         for (String mutexId : skill.mutexSkills) {
             if (getLevel(mutexId) > 0) {
@@ -350,10 +358,10 @@ public class SkillTreeScreen extends Screen {
             }
         }
         if (isMutexLocked) {
-            tooltip.add(Text.translatable("gui.ascension.tooltip.mutex_locked").formatted(Formatting.RED));
+            tooltip.add(Text.translatable("gui.ascension.tooltip.mutex_locked").formatted(Formatting.RED).asOrderedText());
         }
 
-        // 获取本地缓存数据
+        // 获取缓存数据
         IEntityDataSaver data = (IEntityDataSaver) this.client.player;
         boolean clientCriteriaMet = true;
         net.minecraft.nbt.NbtCompound cache = null;
@@ -369,56 +377,52 @@ public class SkillTreeScreen extends Screen {
         int targetLevel = currentLevel + 1;
         List<com.qishui48.ascension.skill.UnlockCriterion> criteriaList = skill.getCriteria(targetLevel);
 
-        if (!criteriaList.isEmpty()) {
-            if (cache != null && cache.contains(skill.id)) {
-                clientCriteriaMet = cache.getBoolean(skill.id);
-            } else {
-                clientCriteriaMet = false;
-            }
-        }
-
         if (!isMaxed) {
             int nextLevelCost = skill.getCost(targetLevel);
-            // [修改] 升级消耗: 使用翻译键，并将数字设为青色(AQUA)
             tooltip.add(Text.translatable("gui.ascension.tooltip.cost",
-                    Text.literal(String.valueOf(nextLevelCost)).formatted(Formatting.AQUA)).formatted(Formatting.GRAY));
+                    Text.literal(String.valueOf(nextLevelCost)).formatted(Formatting.AQUA)).formatted(Formatting.GRAY).asOrderedText());
 
             if (!criteriaList.isEmpty()) {
-                tooltip.add(Text.of("")); // 空行
-                if (clientCriteriaMet) {
-                    // [修改] 条件达成
-                    tooltip.add(Text.translatable("gui.ascension.tooltip.criteria.met").formatted(Formatting.GREEN));
+                if (cache != null && cache.contains(skill.id)) {
+                    clientCriteriaMet = cache.getBoolean(skill.id);
                 } else {
-                    // [修改] 需要满足
-                    tooltip.add(Text.translatable("gui.ascension.tooltip.criteria.required").formatted(Formatting.RED));
+                    clientCriteriaMet = false;
+                }
+
+                tooltip.add(Text.of("").asOrderedText()); // 空行
+
+                if (clientCriteriaMet) {
+                    tooltip.add(Text.translatable("gui.ascension.tooltip.criteria.met").formatted(Formatting.GREEN).asOrderedText());
+                } else {
+                    tooltip.add(Text.translatable("gui.ascension.tooltip.criteria.required").formatted(Formatting.RED).asOrderedText());
 
                     for (int i = 0; i < criteriaList.size(); i++) {
                         com.qishui48.ascension.skill.UnlockCriterion c = criteriaList.get(i);
-                        int currentVal = (progresses != null && i < progresses.length) ? progresses[i] : 0;
-                        String color = (currentVal >= c.getThreshold()) ? "§a" : "§7";
+                        int rawVal = (progresses != null && i < progresses.length) ? progresses[i] : 0;
 
-                        // [修改] 拼接条件详情：颜色 + " - " + 描述 + " (当前/目标)"
+                        // === [修复] 单位修正：除以显示系数 ===
+                        // 如果 rawVal 是 250cm, divisor 是 100.0, 则 displayVal 是 2(m)
+                        int displayVal = (int) (rawVal / c.getDisplayDivisor());
+                        // 目标值已经在 getDescription 里处理过了，这里只处理当前值
+
+                        String color = (rawVal >= c.getThreshold()) ? "§a" : "§7";
+
                         tooltip.add(Text.translatable("gui.ascension.tooltip.criterion_progress",
                                 color,
                                 c.getDescription(),
-                                currentVal,
-                                c.getThreshold()));
+                                displayVal, // 显示修正后的数值
+                                (int)(c.getThreshold() / c.getDisplayDivisor()) // 显示修正后的目标值
+                        ).asOrderedText());
                     }
                 }
             }
 
-            boolean hasParent = (skill.parentId != null);
-            boolean parentUnlocked = false;
-
-            // === [新增] 多父节点解锁检查 ===
+            // ... (前置判定逻辑保持不变，只需改为 .asOrderedText() 加入列表) ...
             List<String> allParents = new ArrayList<>();
             if (skill.parentId != null) allParents.add(skill.parentId);
             allParents.addAll(skill.visualParents);
-
-            if (allParents.isEmpty()) {
-                parentUnlocked = true; // 根节点
-            } else {
-                // 只要有一个父节点解锁了，就算前置达成
+            boolean parentUnlocked = allParents.isEmpty();
+            if (!parentUnlocked) {
                 for (String pid : allParents) {
                     if (getLevel(pid) > 0) {
                         parentUnlocked = true;
@@ -428,23 +432,20 @@ public class SkillTreeScreen extends Screen {
             }
 
             if (!parentUnlocked) {
-                // [修改] 前置未解锁
-                tooltip.add(Text.translatable("gui.ascension.tooltip.parent_locked").formatted(Formatting.RED));
+                tooltip.add(Text.translatable("gui.ascension.tooltip.parent_locked").formatted(Formatting.RED).asOrderedText());
             } else if (!criteriaList.isEmpty() && !clientCriteriaMet) {
-                // [修改] 条件未满足
-                tooltip.add(Text.translatable("gui.ascension.tooltip.criteria.failed").formatted(Formatting.RED));
+                tooltip.add(Text.translatable("gui.ascension.tooltip.criteria.failed").formatted(Formatting.RED).asOrderedText());
             } else if (currentLevel > 0) {
-                // [修改] 点击升级
-                tooltip.add(Text.translatable("gui.ascension.tooltip.action.upgrade").formatted(Formatting.GREEN));
+                tooltip.add(Text.translatable("gui.ascension.tooltip.action.upgrade").formatted(Formatting.GREEN).asOrderedText());
             } else {
-                // [修改] 点击解锁
-                tooltip.add(Text.translatable("gui.ascension.tooltip.action.unlock").formatted(Formatting.GREEN));
+                tooltip.add(Text.translatable("gui.ascension.tooltip.action.unlock").formatted(Formatting.GREEN).asOrderedText());
             }
         } else {
-            // [修改] 已满级
-            tooltip.add(Text.translatable("gui.ascension.tooltip.max_level").formatted(Formatting.GOLD));
+            tooltip.add(Text.translatable("gui.ascension.tooltip.max_level").formatted(Formatting.GOLD).asOrderedText());
         }
-        context.drawTooltip(this.textRenderer, tooltip, mouseX, mouseY);
+
+        // 使用 drawOrderedTooltip 渲染
+        context.drawOrderedTooltip(this.textRenderer, tooltip, mouseX, mouseY);
     }
 
     @Override

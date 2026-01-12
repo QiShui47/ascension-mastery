@@ -78,6 +78,10 @@ public class ShovelItemMixin {
                     // 额外提示音
                     world.playSound(null, pos, SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.PLAYERS, 0.5f, 1.5f);
                 }
+                //5%概率移除沙子但什么都得不到
+                else if (world.random.nextFloat() < totalChance + 0.05f) {
+                    world.setBlockState(pos, Blocks.AIR.getDefaultState());
+                }
 
                 // 阻止原版逻辑 (例如削路径)
                 cir.setReturnValue(ActionResult.SUCCESS);

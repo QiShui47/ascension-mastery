@@ -95,6 +95,7 @@
   "message.ascension.unlock_success": "Unlocked: %s (Lv.%s)",
   "message.ascension.mutex_locked": "Mutually exclusive with %s!",
   "message.ascension.parent_locked_any": "Parent locked! You must unlock at least one parent skill.",
+  "message.ascension.refund_points": "[Ascension] Skill cost adjustment detected. %s skill points have been refunded.",
 
   "enchantment.ascension.life_steal": "Life Steal",
   "enchantment.ascension.speed_steal": "Speed Steal",
@@ -161,6 +162,16 @@
   "skill.ascension.hunger_constitution.desc": "Grants Absorption when hunger drops.",
   "skill.ascension.hunger_constitution.desc.2": "Grants more Absorption when hunger drops.",
 
+  "skill.ascension.hotpot_diner": "Hotpot Diner",
+  "skill.ascension.hotpot_diner.desc": "Eating cooked meat has a 10% chance to restore 3 hearts.",
+  "skill.ascension.hotpot_diner.desc.2": "Eating cooked meat has a 20% chance to restore 3 hearts.",
+  "skill.ascension.hotpot_diner.desc.3": "Eating cooked meat has a 30% chance to restore 3 hearts.",
+
+  "skill.ascension.sugar_master": "Sugar Master",
+  "skill.ascension.sugar_master.desc": "Eating Cake Slices or Pumpkin Pie grants 1.5 extra Saturation.",
+  "skill.ascension.sugar_master.desc.2": "Eating Cake Slices or Pumpkin Pie grants 3.0 extra Saturation.",
+  "skill.ascension.sugar_master.desc.3": "Eating Cake Slices or Pumpkin Pie grants 4.5 extra Saturation. If saturation overflows, it instantly heals health!",
+
   "skill.ascension.hunger_tolerance": "Hunger Tolerance",
   "skill.ascension.hunger_tolerance.desc": "Regenerate health as long as hunger is not zero.",
 
@@ -188,19 +199,28 @@
   "skill.ascension.hephaestus_favor.desc.3": "Increases drop chance to 70%, and adds a chance to drop Raw Iron.",
 
   "skill.ascension.gold_panning": "Gold Panning",
-  "skill.ascension.gold_panning.desc": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (5% chance)! Chance affected by Fortune.",
-  "skill.ascension.gold_panning.desc.2": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (7% chance)! Chance affected by Fortune.",
-  "skill.ascension.gold_panning.desc.3": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (9% chance)! Chance affected by Fortune.",
-  "skill.ascension.gold_panning.desc.4": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (11% chance)! Chance affected by Fortune.",
-  "skill.ascension.gold_panning.desc.5": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (13% chance)! Chance affected by Fortune.",
-  "skill.ascension.gold_panning.desc.6": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (15% chance)! Chance affected by Fortune.",
-  "skill.ascension.gold_panning.desc.7": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (17% chance)! Chance affected by Fortune.",
-  "skill.ascension.gold_panning.desc.8": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (19% chance)! Chance affected by Fortune.",
+  "skill.ascension.gold_panning.desc": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (5% chance)! Chance affected by shovel tier and Fortune.",
+  "skill.ascension.gold_panning.desc.2": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (7% chance)! Chance affected by shovel tier and Fortune.",
+  "skill.ascension.gold_panning.desc.3": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (9% chance)! Chance affected by shovel tier and Fortune.",
+  "skill.ascension.gold_panning.desc.4": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (11% chance)! Chance affected by shovel tier and Fortune.",
+  "skill.ascension.gold_panning.desc.5": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (13% chance)! Chance affected by shovel tier and Fortune.",
+  "skill.ascension.gold_panning.desc.6": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (15% chance)! Chance affected by shovel tier and Fortune.",
+  "skill.ascension.gold_panning.desc.7": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (17% chance)! Chance affected by shovel tier and Fortune.",
+  "skill.ascension.gold_panning.desc.8": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (19% chance)! Chance affected by shovel tier and Fortune.",
 
-  "skill.ascension.swift_move": "Swift Offensive",
-  "skill.ascension.swift_move.desc": "Movement Speed +",
-  "skill.ascension.swift_move.desc.2": "Movement Speed ++",
-  "skill.ascension.swift_move.desc.3": "Movement Speed +++",
+  "skill.ascension.academic_miner": "Academic Miner",
+  "skill.ascension.academic_miner.desc": "Grants extra experience when mining ores.",
+  "skill.ascension.academic_miner.desc.2": "Grants more extra experience when mining ores.",
+
+  "skill.ascension.swift_move": "Swift Runner",
+  "skill.ascension.swift_move.desc": "You run faster. Speed increased by 13%.",
+  "skill.ascension.swift_move.desc.2": "You run faster. Speed increased by 25%.",
+  "skill.ascension.swift_move.desc.3": "You run faster. Speed increased by 40%.",
+
+  "skill.ascension.human_dynamo": "Human Dynamo",
+  "skill.ascension.human_dynamo.desc": "Kinetic conversion! Gain 5 XP for every 100 meters traveled.",
+  "skill.ascension.human_dynamo.desc.2": "Gain 8 XP for every 100 meters traveled.",
+  "skill.ascension.human_dynamo.desc.3": "Gain 11 XP for every 100 meters traveled.",
 
   "criterion.ascension.eat_apple": "Ate %s apples",
   "criterion.ascension.kill_cow": "Killed %s cows",
@@ -220,5 +240,16 @@
   "criterion.ascension.mine_deepslate": "Mined %s Deepslate",
   "criterion.ascension.walk_bedrock": "Walked %s meters on Bedrock",
   "criterion.ascension.smelt_glass": "Smelted %s Glass",
-  "criterion.ascension.collect_stained_glass": "Collected %s types of Stained Glass"
+  "criterion.ascension.collect_stained_glass": "Collected %s types of Stained Glass",
+  "criterion.ascension.cook_smoker": "Cooked %s items in a Smoker",
+  "criterion.ascension.travel_overworld": "Traveled %s meters in the Overworld",
+  "criterion.ascension.travel_nether": "Traveled %s meters in the Nether",
+  "criterion.ascension.travel_end": "Traveled %s meters in the End",
+  "criterion.ascension.minecart_travel": "Traveled %s meters by Minecart",
+  "criterion.ascension.mine_emerald_ore": "Mined %s Emerald Ore",
+  "criterion.ascension.mine_deepslate_emerald_ore": "Mined %s Deepslate Emerald Ore",
+  "criterion.ascension.collect_crops": "Harvested %s types of crops",
+  "criterion.ascension.craft_bread": "Crafted %s Bread",
+  "criterion.ascension.collect_honey": "Collected %s Honey Bottles",
+  "criterion.ascension.harvest_pumpkin": "Harvested %s Pumpkins"
 }

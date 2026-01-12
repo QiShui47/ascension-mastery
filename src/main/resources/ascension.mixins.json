@@ -19,7 +19,8 @@
 		"AbstractBlockMixin",
 		"ShovelItemMixin",
 		"AbstractFurnaceBlockEntityMixin",
-		"AbstractFurnaceBlockEntityAccessor"
+		"AbstractFurnaceBlockEntityAccessor",
+		"CakeBlockMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

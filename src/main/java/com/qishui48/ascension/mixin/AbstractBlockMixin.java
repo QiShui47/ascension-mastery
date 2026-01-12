@@ -1,15 +1,24 @@
 package com.qishui48.ascension.mixin;
 
+import com.qishui48.ascension.Ascension;
+import com.qishui48.ascension.util.IEntityDataSaver;
 import com.qishui48.ascension.util.PacketUtils;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
+import net.minecraft.block.CropBlock;
 import net.minecraft.entity.Entity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.loot.context.LootContextParameterSet;
 import net.minecraft.loot.context.LootContextParameters;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.NbtList;
+import net.minecraft.nbt.NbtString;
+import net.minecraft.registry.Registries;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.stat.Stats;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.random.Random;
 import org.spongepowered.asm.mixin.Mixin;
@@ -51,6 +60,42 @@ public class AbstractBlockMixin {
                     // Lv3 额外掉落粗铁 (10%) - 独立判定，不影响石英
                     if (level >= 3 && random.nextFloat() < 0.1f) {
                         drops.add(new ItemStack(Items.RAW_IRON));
+                    }
+                }
+            }
+            // === 糖分主理人：收获农作物追踪 ===
+            // 检查是否是作物方块 且 已成熟
+            if (state.getBlock() instanceof CropBlock crop && crop.isMature(state)) {
+                String blockId = Registries.BLOCK.getId(state.getBlock()).toString();
+                // 过滤：只记录我们关心的几种 (小麦、胡萝卜、马铃薯、甜菜根)
+                boolean isValidCrop = blockId.equals("minecraft:wheat") ||
+                        blockId.equals("minecraft:carrots") ||
+                        blockId.equals("minecraft:potatoes") ||
+                        blockId.equals("minecraft:beetroots");
+                if (isValidCrop) {
+                    IEntityDataSaver dataSaver = (IEntityDataSaver) player;
+                    NbtCompound nbt = dataSaver.getPersistentData();
+
+                    NbtList collectedCrops;
+                    if (nbt.contains("collected_crop_types", NbtElement.LIST_TYPE)) {
+                        collectedCrops = nbt.getList("collected_crop_types", NbtElement.STRING_TYPE);
+                    } else {
+                        collectedCrops = new NbtList();
+                    }
+                    // 查重
+                    boolean found = false;
+                    for (NbtElement e : collectedCrops) {
+                        if (e.asString().equals(blockId)) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        collectedCrops.add(NbtString.of(blockId));
+                        nbt.put("collected_crop_types", collectedCrops);
+
+                        // 更新统计：数量
+                        player.getStatHandler().setStat(player, Stats.CUSTOM.getOrCreateStat(Ascension.COLLECT_CROP_VARIANTS), collectedCrops.size());
                     }
                 }
             }

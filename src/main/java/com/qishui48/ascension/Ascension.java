@@ -48,13 +48,17 @@ public class Ascension implements ModInitializer {
 	public static final Identifier WALK_ON_BEDROCK = new Identifier(MOD_ID, "walk_on_bedrock"); //在基岩上行走
 	public static final Identifier COLLECT_STAINED_GLASS = new Identifier(MOD_ID, "collect_stained_glass"); // 用于追踪染色玻璃数量
 	public static final Identifier COOK_IN_SMOKER = new Identifier(MOD_ID, "cook_in_smoker"); // 烟熏炉烹饪
-	public static final Identifier TRAVEL_NETHER = new Identifier(MOD_ID, "travel_nether");   // 下界旅行
+	public static final Identifier COLLECT_CROP_VARIANTS = new Identifier(MOD_ID, "collect_crop_variants"); // 农作物种类
+	public static final Identifier COLLECT_HONEY = new Identifier(MOD_ID, "collect_honey");                 // 蜂蜜瓶
+	public static final Identifier TRAVEL_OVERWORLD = new Identifier(MOD_ID, "travel_overworld");//主世界旅行
+	public static final Identifier TRAVEL_NETHER = new Identifier(MOD_ID, "travel_nether");//下界旅行
+	public static final Identifier TRAVEL_END = new Identifier(MOD_ID, "travel_end");//末地旅行
 
 	@Override
 	public void onInitialize() {
-		// 0. 最先初始化技能表
+		// 最先初始化技能表
 		//SkillRegistry.registerAll();
-		// 1. 实例化
+		// 实例化
 		HEALTH_STEAL = new LifeStealEnchantment();
 		SPEED_STEAL = new SpeedStealEnchantment();
 		LIFE_FORCE = new Enchantment(Enchantment.Rarity.COMMON, EnchantmentTarget.BOW, new EquipmentSlot[]{EquipmentSlot.MAINHAND}) {
@@ -72,7 +76,7 @@ public class Ascension implements ModInitializer {
 			public int getMaxLevel() { return 1; }
 		};
 
-		// 2. 注册
+		// 注册
 		Registry.register(Registries.ENCHANTMENT, new Identifier(MOD_ID, "life_steal"), HEALTH_STEAL);
 		Registry.register(Registries.ENCHANTMENT, new Identifier(MOD_ID, "speed_steal"), SPEED_STEAL);
 		Registry.register(Registries.ENCHANTMENT, new Identifier(MOD_ID, "death_star_cannon"), DEATH_STAR_CANNON);
@@ -93,17 +97,24 @@ public class Ascension implements ModInitializer {
 		Registry.register(Registries.CUSTOM_STAT, WALK_ON_BEDROCK, WALK_ON_BEDROCK);
 		Registry.register(Registries.CUSTOM_STAT, COLLECT_STAINED_GLASS, COLLECT_STAINED_GLASS);
 		Registry.register(Registries.CUSTOM_STAT, COOK_IN_SMOKER, COOK_IN_SMOKER);
+		Registry.register(Registries.CUSTOM_STAT, COLLECT_CROP_VARIANTS, COLLECT_CROP_VARIANTS);
+		Registry.register(Registries.CUSTOM_STAT, COLLECT_HONEY, COLLECT_HONEY);
+		Registry.register(Registries.CUSTOM_STAT, TRAVEL_OVERWORLD, TRAVEL_OVERWORLD);
 		Registry.register(Registries.CUSTOM_STAT, TRAVEL_NETHER, TRAVEL_NETHER);
+		Registry.register(Registries.CUSTOM_STAT, TRAVEL_END, TRAVEL_END);
 		SkillRegistry.registerAll();
 
 		//踏足新维度的事件
 		ModEvents.register();
 
-		// 3. 注册网络包
+		// 注册网络包
 		ModMessages.registerC2SPackets();
 
-		// 4. 注册登录同步事件 - 玩家加入服务器时
+		// 注册登录同步事件 - 玩家加入服务器时
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+			// 先进行平衡性检查
+			PacketUtils.checkSkillPointBalance(handler.getPlayer());
+			// 刷新各种数据
 			PacketUtils.syncSkillData(handler.getPlayer());
 			SkillEffectHandler.refreshAttributes(handler.getPlayer());
 		});

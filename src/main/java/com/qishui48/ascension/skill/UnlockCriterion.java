@@ -49,6 +49,11 @@ public class UnlockCriterion {
         return Text.translatable(translationKey, displayValue);
     }
 
+    // 解锁条件单位修正
+    public double getDisplayDivisor() {
+        return this.displayDivisor;
+    }
+
     public Stat<?> getStat() { return stat; }
     public int getThreshold() { return threshold; }
 }

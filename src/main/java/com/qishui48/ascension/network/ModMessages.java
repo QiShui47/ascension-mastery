@@ -110,6 +110,8 @@ public class ModMessages {
 
                 // 执行交易
                 dataSaver.getPersistentData().putInt("skill_points", currentPoints - actualCost);
+                // 记录花费（以进行平衡补偿）
+                PacketUtils.recordSpending(player, actualCost);
                 PacketUtils.unlockSkill(player, skillId);
                 SkillEffectHandler.refreshAttributes(player);
                 SkillEffectHandler.onSkillUnlocked(player, skillId);

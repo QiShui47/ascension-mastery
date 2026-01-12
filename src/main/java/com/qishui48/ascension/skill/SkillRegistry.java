@@ -41,16 +41,32 @@ public class SkillRegistry {
         // 脚底抹油 (Tier 2)
         register(new Skill("swift_move", Items.LEATHER_BOOTS, 2, "survival", 3, 5, 7, 10));
 
+        // 人力发电机 (Human Dynamo)
+        Skill humanDynamo = new Skill("human_dynamo", Items.IRON_BOOTS, 3, "swift_move", 3, 3, 5, 8);
+        humanDynamo.addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.TRAVEL_OVERWORLD, 200000, "criterion.ascension.travel_overworld").setDisplayDivisor(100.0));
+        humanDynamo.addUpgradeCriterion(2, new UnlockCriterion(Stats.CUSTOM, Ascension.TRAVEL_NETHER, 200000, "criterion.ascension.travel_nether").setDisplayDivisor(100.0));
+        humanDynamo.addUpgradeCriterion(3, new UnlockCriterion(Stats.CUSTOM, Ascension.TRAVEL_END, 200000, "criterion.ascension.travel_end").setDisplayDivisor(100.0));
+        register(humanDynamo);
+
+        // 糖分主理人 (Sugar Master)
+        Skill sugarMaster = new Skill("sugar_master", Items.CAKE, 2, "survival", 3, 5, 10, 15);
+        sugarMaster.addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.COLLECT_CROP_VARIANTS, 4, "criterion.ascension.collect_crops"));
+        sugarMaster.addCriterion(new UnlockCriterion(Stats.CRAFTED, Items.BREAD, 32, "criterion.ascension.craft_bread"));
+        sugarMaster.addUpgradeCriterion(3, new UnlockCriterion(Stats.CUSTOM, Ascension.COLLECT_HONEY, 8, "criterion.ascension.collect_honey"));
+        sugarMaster.addUpgradeCriterion(3, new UnlockCriterion(Stats.MINED, net.minecraft.block.Blocks.PUMPKIN, 32, "criterion.ascension.harvest_pumpkin"));
+        register(sugarMaster);
+
         // 火锅食客 (Tier 2)
         register(new Skill("hotpot_diner", Items.COOKED_BEEF, 2, "survival", 3, 5, 7, 10)
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.COOK_IN_SMOKER, 16, "criterion.ascension.cook_smoker"))
                 .addUpgradeCriterion(3, new UnlockCriterion(Stats.CUSTOM, Ascension.TRAVEL_NETHER, 100000, "criterion.ascension.travel_nether").setDisplayDivisor(100.0)));
 
         // 饥饿耐受 (Tier 3)
-        register(new Skill("hunger_tolerance", Items.COOKED_CHICKEN, 3, "hotpot_diner", 1, 15));
+        register(new Skill("hunger_tolerance", Items.COOKED_CHICKEN, 3, "hotpot_diner", 1, 15)
+                .withVisualParent("sugar_master")); // 增加连线
 
         // 饥饿体质 (Tier 4)
-        register(new Skill("hunger_constitution", Items.ROTTEN_FLESH, 4, "hunger_tolerance", 2, 15));
+        register(new Skill("hunger_constitution", Items.RABBIT_STEW, 4, "hunger_tolerance", 2, 15));
 
         // 饥饿爆发 (Tier 5, 隐藏技能)
         register(new Skill("hunger_burst", Items.RABBIT_FOOT, 5, "hunger_constitution", 1, true, 20));
@@ -60,29 +76,26 @@ public class SkillRegistry {
         // === Combat Branch (战斗系) ===
         // ==========================================================
 
-        // --- 火焰系分支 (重构) ---
+        // --- 火焰系分支 ---
 
-        // 1. 火焰抵抗 (Fire Resistance) - Tier 2 (前置)
+        // 火焰抵抗 (Fire Resistance) - Tier 2
         register(new Skill("fire_resistance", Items.MAGMA_CREAM, 2, "combat", 2, 15, 25)
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.BREW_FIRE_RES_POTION, 1, "criterion.ascension.brew_fire_res")));
 
-        // 2. 左分支：火焰感染 (Fire Infection) - Tier 3
+        // 火焰感染 (Fire Infection) - Tier 3
         register(new Skill("fire_infection", Items.BLAZE_POWDER, 3, "fire_resistance", 1, 15)
                 .setMutex("fire_res") // 与火焰免疫互斥
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.KILL_BURNING_SKELETON, 1, "criterion.ascension.kill_burning_skeleton")));
 
-        // 3. 右分支：火焰免疫 (Fire Immunity) - Tier 3 (沿用旧ID fire_res)
+        // 火焰免疫 (Fire Immunity) - Tier 3
         register(new Skill("fire_res", Items.LAVA_BUCKET, 3, "fire_resistance", 1, 45) // 从 Tier 2 移动到 Tier 3
                 .setMutex("fire_infection") // 与火焰感染互斥
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Stats.DAMAGE_TAKEN, 2000, "criterion.ascension.take_fire_damage").setDisplayDivisor(10.0)));
 
-        // 4. 汇聚节点：热能引擎 (Thermal Dynamo) - Tier 4
-        // 主父节点设为 "fire_infection" (用于确定它画在左边分支的下方)
-        // 额外父节点设为 "fire_res" (右边也会画一条线连过来)
+        // 热能引擎 (Tier 4)
         register(new Skill("thermal_dynamo", Items.CAMPFIRE, 4, "fire_infection", 1, 15)
                 .withVisualParent("fire_res")
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.SWIM_IN_LAVA, 20000, "criterion.ascension.swim_lava").setDisplayDivisor(100.0)));
-
 
         // --- 机动系分支 ---
 
@@ -137,7 +150,7 @@ public class SkillRegistry {
         Skill academicMiner = new Skill("academic_miner", Items.IRON_PICKAXE, 3, "miner_frenzy", 2, 5, 10);
         academicMiner.addCriterion(new UnlockCriterion(Stats.CUSTOM, Stats.MINECART_ONE_CM, 10000, "criterion.ascension.minecart_travel").setDisplayDivisor(100.0));
         academicMiner.addUpgradeCriterion(2, new UnlockCriterion(Stats.MINED, net.minecraft.block.Blocks.EMERALD_ORE, 1, "criterion.ascension.mine_emerald_ore"));
-        academicMiner.addUpgradeCriterion(2, new UnlockCriterion(Stats.MINED, net.minecraft.block.Blocks.DEEPSLATE_EMERALD_ORE, 1, "criterion.ascension.mine_emerald_ore"));
+        academicMiner.addUpgradeCriterion(2, new UnlockCriterion(Stats.MINED, net.minecraft.block.Blocks.DEEPSLATE_EMERALD_ORE, 1, "criterion.ascension.mine_deepslate_emerald_ore"));
         register(academicMiner);
 
         // 计算布局

@@ -14,6 +14,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.sound.SoundCategory;
+import net.minecraft.util.Formatting;
 
 import java.util.List;
 
@@ -182,5 +183,56 @@ public class PacketUtils {
         PacketByteBuf buf = PacketByteBufs.create();
         buf.writeString(Text.Serializer.toJson(message));
         ServerPlayNetworking.send(player, ModMessages.SHOW_NOTIFICATION_ID, buf);
+    }
+
+    // === 技能点平衡性检查 ===
+    public static void checkSkillPointBalance(ServerPlayerEntity player) {
+        IEntityDataSaver dataSaver = (IEntityDataSaver) player;
+        NbtCompound nbt = dataSaver.getPersistentData();
+
+        // 1. 计算当前所有已解锁技能的总价值 (Current Theoretical Cost)
+        int currentTotalValue = 0;
+        for (Skill skill : SkillRegistry.getAll()) {
+            int level = getSkillLevel(player, skill.id);
+            if (level > 0) {
+                // 累加每一级的消耗
+                for (int i = 1; i <= level; i++) {
+                    currentTotalValue += skill.getCost(i);
+                }
+            }
+        }
+        // 2. 获取记录的“实际已花费点数”
+        // 如果没有记录 (老存档)，则初始化为当前价值 (既往不咎)
+        if (!nbt.contains("spent_skill_points")) {
+            nbt.putInt("spent_skill_points", currentTotalValue);
+            return; // 首次初始化，无需返还
+        }
+        int spentPoints = nbt.getInt("spent_skill_points");
+        // 3. 比较
+        if (spentPoints > currentTotalValue) {
+            // 情况：贬值了，返还差价
+            int refund = spentPoints - currentTotalValue;
+            // 返还到可用点数
+            int available = nbt.getInt("skill_points");
+            nbt.putInt("skill_points", available + refund);
+            // 更新已花费点数为当前价值
+            nbt.putInt("spent_skill_points", currentTotalValue);
+            // 提示玩家
+            player.sendMessage(Text.translatable("message.ascension.refund_points", refund).formatted(Formatting.GOLD), false);
+            player.playSound(SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.PLAYERS, 1.0f, 1.0f);
+            // 同步
+            syncSkillData(player);
+        }
+        // 情况：升值了 (spentPoints < currentTotalValue) -> 少不补，保留原 spentPoints
+    }
+
+    // === 解锁技能时记录花费 ===
+    // 在 ModMessages.java 里调用 unlockSkill 时，也需要更新 spent_skill_points
+    // 加一个 helper 方法给 ModMessages 用
+    public static void recordSpending(ServerPlayerEntity player, int cost) {
+        IEntityDataSaver dataSaver = (IEntityDataSaver) player;
+        NbtCompound nbt = dataSaver.getPersistentData();
+        int spent = nbt.getInt("spent_skill_points");
+        nbt.putInt("spent_skill_points", spent + cost);
     }
 }
