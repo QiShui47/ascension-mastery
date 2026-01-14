@@ -20,7 +20,11 @@
 		"ShovelItemMixin",
 		"AbstractFurnaceBlockEntityMixin",
 		"AbstractFurnaceBlockEntityAccessor",
-		"CakeBlockMixin"
+		"CakeBlockMixin",
+		"BoatEntityMixin",
+		"ItemMixin",
+		"CraftingResultSlotMixin",
+		"PlayerAttackMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

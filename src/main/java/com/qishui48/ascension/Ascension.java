@@ -53,6 +53,13 @@ public class Ascension implements ModInitializer {
 	public static final Identifier TRAVEL_OVERWORLD = new Identifier(MOD_ID, "travel_overworld");//主世界旅行
 	public static final Identifier TRAVEL_NETHER = new Identifier(MOD_ID, "travel_nether");//下界旅行
 	public static final Identifier TRAVEL_END = new Identifier(MOD_ID, "travel_end");//末地旅行
+	public static final Identifier BOAT_ON_ICE = new Identifier(MOD_ID, "boat_on_ice");//冰上划船
+	public static final Identifier BREW_WATER_BREATHING = new Identifier(MOD_ID, "brew_water_breathing");//炼制水肺药水
+	public static final Identifier CRAFT_WATER_BREATHING_ARROW = new Identifier(MOD_ID, "craft_water_breathing_arrow");//做水肺箭
+	public static final Identifier MOVE_UNDERWATER = new Identifier(MOD_ID, "move_underwater");//水下移动
+	public static final Identifier KILL_CHARGED_CREEPER = new Identifier(MOD_ID, "kill_charged_creeper");//击杀闪电苦力怕
+	public static final Identifier ASCEND_HEIGHT = new Identifier(MOD_ID, "ascend_height"); // 上升高度
+	public static final Identifier KILL_ZOMBIE_AIR = new Identifier(MOD_ID, "kill_zombie_air"); // 空中杀僵尸
 
 	@Override
 	public void onInitialize() {
@@ -102,6 +109,13 @@ public class Ascension implements ModInitializer {
 		Registry.register(Registries.CUSTOM_STAT, TRAVEL_OVERWORLD, TRAVEL_OVERWORLD);
 		Registry.register(Registries.CUSTOM_STAT, TRAVEL_NETHER, TRAVEL_NETHER);
 		Registry.register(Registries.CUSTOM_STAT, TRAVEL_END, TRAVEL_END);
+		Registry.register(Registries.CUSTOM_STAT, BOAT_ON_ICE, BOAT_ON_ICE);
+		Registry.register(Registries.CUSTOM_STAT, BREW_WATER_BREATHING, BREW_WATER_BREATHING);
+		Registry.register(Registries.CUSTOM_STAT, CRAFT_WATER_BREATHING_ARROW, CRAFT_WATER_BREATHING_ARROW);
+		Registry.register(Registries.CUSTOM_STAT, MOVE_UNDERWATER, MOVE_UNDERWATER);
+		Registry.register(Registries.CUSTOM_STAT, KILL_CHARGED_CREEPER, KILL_CHARGED_CREEPER);
+		Registry.register(Registries.CUSTOM_STAT, ASCEND_HEIGHT, ASCEND_HEIGHT);
+		Registry.register(Registries.CUSTOM_STAT, KILL_ZOMBIE_AIR, KILL_ZOMBIE_AIR);
 		SkillRegistry.registerAll();
 
 		//踏足新维度的事件

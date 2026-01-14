@@ -66,6 +66,8 @@
   "gui.ascension.tooltip.hidden_revealed": "[隐藏技能已发现!]",
   "gui.ascension.tooltip.criteria.met": "[✔] 解锁条件已达成",
   "gui.ascension.tooltip.criteria.required": "[✖] 需要满足以下任一条件:",
+  "gui.ascension.tooltip.criteria.or": "--- 或 ---",
+  "gui.ascension.tooltip.criteria.required_all": "[✖] 需同时满足:",
   "gui.ascension.tooltip.max_level": "[已满级]",
   "gui.ascension.tooltip.cost": "升级消耗: %s 点",
   "gui.ascension.tooltip.parent_locked": "[前置技能未解锁]",
@@ -130,12 +132,31 @@
   "skill.ascension.fire_res": "火焰免疫",
   "skill.ascension.fire_res.desc": "无视火焰伤害，像下界生物一样",
 
+  "skill.ascension.melancholic_personality": "忧郁人格",
+  "skill.ascension.melancholic_personality.desc": "雨天/雷暴且处于露天时，缓慢恢复生命和饥饿度。",
+  "skill.ascension.melancholic_personality.desc.2": "雨天露天恢复生命饥饿。若环境改变，获得12秒抗性提升I。",
+
+  "skill.ascension.sacrificial_strike": "舍身一击",
+  "skill.ascension.sacrificial_strike.desc": "多段跳滞空后的第1击伤害+20%。离地越近伤害越高(最多再+20%)。",
+  "skill.ascension.sacrificial_strike.desc.2": "多段跳滞空后的第1击伤害+40%。离地越近伤害越高(最多再+20%)。",
+
   "skill.ascension.health_boost": "生命提升",
   "skill.ascension.health_boost.desc": "你将获得额外的2颗心",
   "skill.ascension.health_boost.desc.2": "你将获得额外的4颗心",
   "skill.ascension.health_boost.desc.3": "你将获得额外的6颗心",
   "skill.ascension.health_boost.desc.4": "你将获得额外的8颗心！",
   "skill.ascension.health_boost.desc.5": "你将获得额外的10颗心！超级耐揍",
+
+  "skill.ascension.dragon_boat_rower": "龙舟划手",
+  "skill.ascension.dragon_boat_rower.desc": "手持锹划船时速度+33%，但会消耗锹耐久。",
+  "skill.ascension.dragon_boat_rower.desc.2": "手持锹划船时速度+66%，但会消耗锹耐久。",
+
+  "skill.ascension.brain_in_a_jar": "缸中之脑",
+  "skill.ascension.brain_in_a_jar.desc": "允许头戴玻璃。头戴玻璃时获得12秒水下呼吸（像海龟壳一样）。玻璃提供1点护甲，受击有50%概率破碎。",
+  "skill.ascension.brain_in_a_jar.desc.2": "允许头戴玻璃。头戴玻璃时获得24秒水下呼吸（像海龟壳一样）。玻璃提供1点护甲，受击有50%概率破碎。",
+  "skill.ascension.brain_in_a_jar.desc.3": "允许头戴玻璃。头戴玻璃时获得36秒水下呼吸（像海龟壳一样）。玻璃提供1点护甲，受击有50%概率破碎。",
+  "skill.ascension.brain_in_a_jar.desc.4": "允许头戴玻璃。头戴玻璃时获得48秒水下呼吸（像海龟壳一样）。玻璃提供1点护甲，受击有50%概率破碎。",
+  "skill.ascension.brain_in_a_jar.desc.5": "允许头戴玻璃。头戴玻璃时获得60秒水下呼吸（像海龟壳一样）。玻璃提供2点护甲，破碎概率降低至5%。",
 
   "skill.ascension.rocket_boost": "空中推进",
   "skill.ascension.rocket_boost.desc": "你可以在空中额外跳跃1次",
@@ -251,5 +272,13 @@
   "criterion.ascension.collect_crops": "从耕地收获 %s 种农作物",
   "criterion.ascension.craft_bread": "制作 %s 个面包",
   "criterion.ascension.collect_honey": "收集 %s 瓶蜂蜜",
-  "criterion.ascension.harvest_pumpkin": "收获 %s 个南瓜"
+  "criterion.ascension.harvest_pumpkin": "收获 %s 个南瓜",
+  "criterion.ascension.move_underwater": "水下移动 %s 米",
+  "criterion.ascension.boat_on_ice": "在冰上划船 %s 米",
+  "criterion.ascension.brew_water_breathing": "炼制 %s 瓶水肺药水",
+  "criterion.ascension.craft_tipped_arrow": "制作 %s 根水肺之箭",
+  "criterion.ascension.obtain_trident": "获得 %s 把三叉戟",
+  "criterion.ascension.kill_charged_creeper": "击杀 %s 只高压爬行者",
+  "criterion.ascension.ascend_height": "累计上升 %s 米",
+  "criterion.ascension.kill_zombie_air": "在空中击杀 %s 只僵尸"
 }

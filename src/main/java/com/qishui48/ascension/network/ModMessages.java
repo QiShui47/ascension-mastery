@@ -131,8 +131,12 @@ public class ModMessages {
         ServerPlayNetworking.registerGlobalReceiver(CHARGED_JUMP_ID, (server, player, handler, buf, responseSender) -> {
             float powerRatio = buf.readFloat();
             server.execute(() -> {
-                if (PacketUtils.isSkillUnlocked(player, "charged_jump"))
+                if (PacketUtils.isSkillUnlocked(player, "charged_jump")) {
                     SkillActionHandler.executeChargedJump(player, powerRatio);
+                    // === 触发舍身一击准备状态 ===
+                    // 只要进行了二段跳操作，就进入准备状态
+                    ((com.qishui48.ascension.util.ISacrificialState) player).setSacrificialReady(true);
+                }
             });
         });
 

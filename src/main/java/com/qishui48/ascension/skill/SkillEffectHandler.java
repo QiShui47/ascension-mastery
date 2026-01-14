@@ -20,11 +20,12 @@ public class SkillEffectHandler {
     // 热能引擎 UUID
     private static final UUID THERMAL_SPEED_ID = UUID.fromString("d4e5f6a1-0000-0000-0000-000000000004");
     private static final UUID THERMAL_DAMAGE_ID = UUID.fromString("e5f6a1b2-0000-0000-0000-000000000005");
+    private static final java.util.UUID GLASS_ARMOR_ID = java.util.UUID.fromString("f6a1b2c3-0000-0000-0000-000000000006");
 
     private static final double HP_BONUS = 4.0;
 
     public static void refreshAttributes(ServerPlayerEntity player) {
-        // 1. 生命值
+        // 生命值
         var healthAttribute = player.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH);
         if (healthAttribute != null) {
             healthAttribute.removeModifier(HEALTH_BOOST_ID);
@@ -38,7 +39,7 @@ public class SkillEffectHandler {
             }
         }
 
-        // 2. 攻击速度 (战斗本能)
+        // 攻击速度 (战斗本能)
         var attackSpeedAttr = player.getAttributeInstance(EntityAttributes.GENERIC_ATTACK_SPEED);
         if (attackSpeedAttr != null) {
             attackSpeedAttr.removeModifier(ATTACK_SPEED_ID);
@@ -50,7 +51,7 @@ public class SkillEffectHandler {
             }
         }
 
-        // 3. === 新增：移动速度 (迅猛攻势) ===
+        // 移动速度 (脚底抹油)
         var moveSpeedAttr = player.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
         if (moveSpeedAttr != null) {
             moveSpeedAttr.removeModifier(MOVEMENT_SPEED_ID);
@@ -63,6 +64,28 @@ public class SkillEffectHandler {
 
                 moveSpeedAttr.addPersistentModifier(new EntityAttributeModifier(
                         MOVEMENT_SPEED_ID, "Skill Move Speed", boost, EntityAttributeModifier.Operation.MULTIPLY_TOTAL));
+            }
+        }
+
+        // === 缸中之脑：护甲加成 ===
+        var armorAttr = player.getAttributeInstance(EntityAttributes.GENERIC_ARMOR);
+        if (armorAttr != null) {
+            armorAttr.removeModifier(GLASS_ARMOR_ID);
+
+            if (PacketUtils.isSkillActive(player, "brain_in_a_jar")) {
+                // 检查头上是否戴着玻璃
+                net.minecraft.item.ItemStack headStack = player.getEquippedStack(net.minecraft.entity.EquipmentSlot.HEAD);
+                net.minecraft.item.Item item = headStack.getItem();
+                boolean isGlass = (item instanceof net.minecraft.item.BlockItem bi) &&
+                        (bi.getBlock() instanceof net.minecraft.block.AbstractGlassBlock);
+
+                if (isGlass) {
+                    int level = PacketUtils.getSkillLevel(player, "brain_in_a_jar");
+                    double armorValue = (level >= 5) ? 2.0 : 1.0;
+
+                    armorAttr.addPersistentModifier(new EntityAttributeModifier(
+                            GLASS_ARMOR_ID, "Brain Jar Armor", armorValue, EntityAttributeModifier.Operation.ADDITION));
+                }
             }
         }
 

@@ -375,14 +375,19 @@ public class SkillTreeScreen extends Screen {
         }
 
         int targetLevel = currentLevel + 1;
-        List<com.qishui48.ascension.skill.UnlockCriterion> criteriaList = skill.getCriteria(targetLevel);
+
+        // === 同时获取扁平列表和分组列表 ===
+        // criteriaList (扁平): 用于判断整体是否为空，以及查找进度索引
+        List<UnlockCriterion> criteriaList = skill.getCriteria(targetLevel);
+        // groups (分组): 用于 UI 渲染 AND/OR 结构
+        List<List<UnlockCriterion>> groups = skill.getCriteriaGroups(targetLevel);
 
         if (!isMaxed) {
             int nextLevelCost = skill.getCost(targetLevel);
             tooltip.add(Text.translatable("gui.ascension.tooltip.cost",
                     Text.literal(String.valueOf(nextLevelCost)).formatted(Formatting.AQUA)).formatted(Formatting.GRAY).asOrderedText());
 
-            if (!criteriaList.isEmpty()) {
+            if (!criteriaList.isEmpty()) { // 使用 criteriaList 判空是安全的
                 if (cache != null && cache.contains(skill.id)) {
                     clientCriteriaMet = cache.getBoolean(skill.id);
                 } else {
@@ -394,30 +399,50 @@ public class SkillTreeScreen extends Screen {
                 if (clientCriteriaMet) {
                     tooltip.add(Text.translatable("gui.ascension.tooltip.criteria.met").formatted(Formatting.GREEN).asOrderedText());
                 } else {
-                    tooltip.add(Text.translatable("gui.ascension.tooltip.criteria.required").formatted(Formatting.RED).asOrderedText());
+                    // === 核心逻辑修改：使用 groups 遍历渲染 ===
+                    for (int i = 0; i < groups.size(); i++) {
+                        List<UnlockCriterion> group = groups.get(i);
 
-                    for (int i = 0; i < criteriaList.size(); i++) {
-                        com.qishui48.ascension.skill.UnlockCriterion c = criteriaList.get(i);
-                        int rawVal = (progresses != null && i < progresses.length) ? progresses[i] : 0;
+                        // 1. 组间分隔符 (OR)
+                        if (i > 0) {
+                            tooltip.add(Text.translatable("gui.ascension.tooltip.criteria.or")
+                                    .formatted(Formatting.GOLD).asOrderedText());
+                        }
 
-                        // === [修复] 单位修正：除以显示系数 ===
-                        // 如果 rawVal 是 250cm, divisor 是 100.0, 则 displayVal 是 2(m)
-                        int displayVal = (int) (rawVal / c.getDisplayDivisor());
-                        // 目标值已经在 getDescription 里处理过了，这里只处理当前值
+                        // 2. 组内标题 (AND)
+                        if (group.size() > 1) {
+                            tooltip.add(Text.translatable("gui.ascension.tooltip.criteria.required_all")
+                                    .formatted(Formatting.RED).asOrderedText());
+                        } else if (groups.size() == 1) {
+                            // 如果总共只有一组且只有一个条件，显示简单的标题
+                            tooltip.add(Text.translatable("gui.ascension.tooltip.criteria.required")
+                                    .formatted(Formatting.RED).asOrderedText());
+                        }
 
-                        String color = (rawVal >= c.getThreshold()) ? "§a" : "§7";
+                        // 3. 渲染条件
+                        for (UnlockCriterion c : group) {
+                            // 查找该条件在扁平列表中的索引，以便从 progresses 数组获取对应进度
+                            int flatIndex = criteriaList.indexOf(c);
+                            int rawVal = (progresses != null && flatIndex >= 0 && flatIndex < progresses.length) ? progresses[flatIndex] : 0;
 
-                        tooltip.add(Text.translatable("gui.ascension.tooltip.criterion_progress",
-                                color,
-                                c.getDescription(),
-                                displayVal, // 显示修正后的数值
-                                (int)(c.getThreshold() / c.getDisplayDivisor()) // 显示修正后的目标值
-                        ).asOrderedText());
+                            int displayVal = (int) (rawVal / c.getDisplayDivisor());
+
+                            // 颜色逻辑：已完成为绿色，未完成为灰色
+                            String color = (rawVal >= c.getThreshold()) ? "§a" : "§7";
+
+                            // 添加缩进 "- "
+                            tooltip.add(Text.translatable("gui.ascension.tooltip.criterion_progress",
+                                    color,
+                                    c.getDescription(),
+                                    displayVal,
+                                    (int)(c.getThreshold() / c.getDisplayDivisor())
+                            ).asOrderedText());
+                        }
                     }
                 }
             }
 
-            // ... (前置判定逻辑保持不变，只需改为 .asOrderedText() 加入列表) ...
+            // 前置技能判定逻辑
             List<String> allParents = new ArrayList<>();
             if (skill.parentId != null) allParents.add(skill.parentId);
             allParents.addAll(skill.visualParents);
@@ -434,6 +459,7 @@ public class SkillTreeScreen extends Screen {
             if (!parentUnlocked) {
                 tooltip.add(Text.translatable("gui.ascension.tooltip.parent_locked").formatted(Formatting.RED).asOrderedText());
             } else if (!criteriaList.isEmpty() && !clientCriteriaMet) {
+                // 这里需要用到 criteriaList 变量
                 tooltip.add(Text.translatable("gui.ascension.tooltip.criteria.failed").formatted(Formatting.RED).asOrderedText());
             } else if (currentLevel > 0) {
                 tooltip.add(Text.translatable("gui.ascension.tooltip.action.upgrade").formatted(Formatting.GREEN).asOrderedText());

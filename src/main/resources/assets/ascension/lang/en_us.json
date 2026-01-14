@@ -66,6 +66,8 @@
   "gui.ascension.tooltip.hidden_revealed": "[Hidden Skill Discovered!]",
   "gui.ascension.tooltip.criteria.met": "[✔] Criteria Met",
   "gui.ascension.tooltip.criteria.required": "[✖] Criteria Required:",
+  "gui.ascension.tooltip.criteria.or": "--- OR ---",
+  "gui.ascension.tooltip.criteria.required_all": "[✖] Requires ALL:",
   "gui.ascension.tooltip.max_level": "[Max Level]",
   "gui.ascension.tooltip.cost": "Cost: %s Points",
   "gui.ascension.tooltip.parent_locked": "[Parent Skill Locked]",
@@ -130,12 +132,30 @@
   "skill.ascension.fire_res": "Fire Immunity",
   "skill.ascension.fire_res.desc": "Ignore fire damage, just like a Nether native.",
 
+  "skill.ascension.melancholic_personality": "Melancholic",
+  "skill.ascension.melancholic_personality.desc": "Regenerate HP & Hunger when exposed to rain/storm.",
+  "skill.ascension.melancholic_personality.desc.2": "Regens in rain. Grants Resistance I for 12s when condition lost.",
+
+  "skill.ascension.sacrificial_strike": "Sacrificial Strike",
+  "skill.ascension.sacrificial_strike.desc": "First hit after double-jump deals +20% damage. Closer to ground = more damage.",
+  "skill.ascension.sacrificial_strike.desc.2": "First hit after double-jump deals +40% damage. Closer to ground = more damage.",
+
   "skill.ascension.health_boost": "Health Boost",
   "skill.ascension.health_boost.desc": "Grants 2 extra hearts.",
   "skill.ascension.health_boost.desc.2": "Grants 4 extra hearts.",
   "skill.ascension.health_boost.desc.3": "Grants 6 extra hearts.",
   "skill.ascension.health_boost.desc.4": "Grants 8 extra hearts!",
   "skill.ascension.health_boost.desc.5": "Grants 10 extra hearts! Super Tanky.",
+
+  "skill.ascension.dragon_boat_rower": "Dragon Boat Rower",
+  "skill.ascension.dragon_boat_rower.desc": "Rowing with a shovel boosts speed by 33%, consuming durability.",
+  "skill.ascension.dragon_boat_rower.desc.2": "Rowing with a shovel boosts speed by 66%, consuming durability.",
+  "skill.ascension.brain_in_a_jar": "Brain in a Jar",
+  "skill.ascension.brain_in_a_jar.desc": "Allows wearing Glass. Grants 12s Water Breathing. Glass gives 1 Armor but has 50% break chance.",
+  "skill.ascension.brain_in_a_jar.desc.2": "Water Breathing extended to 24s.",
+  "skill.ascension.brain_in_a_jar.desc.3": "Water Breathing extended to 36s.",
+  "skill.ascension.brain_in_a_jar.desc.4": "Water Breathing extended to 48s.",
+  "skill.ascension.brain_in_a_jar.desc.5": "Water Breathing extended to 60s. Armor +2, break chance 5%.",
 
   "skill.ascension.rocket_boost": "Rocket Boost",
   "skill.ascension.rocket_boost.desc": "Allows you to jump one extra time in mid-air.",
@@ -251,5 +271,13 @@
   "criterion.ascension.collect_crops": "Harvested %s types of crops",
   "criterion.ascension.craft_bread": "Crafted %s Bread",
   "criterion.ascension.collect_honey": "Collected %s Honey Bottles",
-  "criterion.ascension.harvest_pumpkin": "Harvested %s Pumpkins"
+  "criterion.ascension.harvest_pumpkin": "Harvested %s Pumpkins",
+  "criterion.ascension.move_underwater": "Move %s meters underwater",
+  "criterion.ascension.boat_on_ice": "Row %s meters on ice",
+  "criterion.ascension.brew_water_breathing": "Brew %s Water Breathing Potions",
+  "criterion.ascension.craft_tipped_arrow": "Craft %s Arrows of Water Breathing",
+  "criterion.ascension.obtain_trident": "Obtain %s Trident",
+  "criterion.ascension.kill_charged_creeper": "Kill %s Charged Creeper",
+  "criterion.ascension.ascend_height": "Ascend %s meters",
+  "criterion.ascension.kill_zombie_air": "Kill %s Zombies while airborne"
 }

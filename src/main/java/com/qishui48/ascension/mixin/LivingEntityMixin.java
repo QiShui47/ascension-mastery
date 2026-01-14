@@ -28,6 +28,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityMixin extends Entity {
@@ -68,6 +69,21 @@ public abstract class LivingEntityMixin extends Entity {
                 player.getStatHandler().increaseStat(player, Stats.CUSTOM.getOrCreateStat(Ascension.KILL_BURNING_SKELETON), 1);
             }
 
+            // === 升级条件：击杀高压爬行者 ===
+            if (victim instanceof net.minecraft.entity.mob.CreeperEntity creeper) {
+                if (creeper.shouldRenderOverlay()) { // shoudRenderOverlay 返回是否是高压状态
+                    player.getStatHandler().increaseStat(player, Stats.CUSTOM.getOrCreateStat(Ascension.KILL_CHARGED_CREEPER), 1);
+                }
+            }
+
+            // === 升级条件：空中击杀僵尸 ===
+            if (victim instanceof net.minecraft.entity.mob.ZombieEntity) {
+                // 玩家必须在空中 (不能在地面)
+                if (!player.isOnGround()) {
+                    player.getStatHandler().increaseStat(player, Stats.CUSTOM.getOrCreateStat(Ascension.KILL_ZOMBIE_AIR), 1);
+                }
+            }
+
             // 5. 查重
             for (NbtElement element : killedList) {
                 if (element.asString().equals(entityId)) {
@@ -76,7 +92,7 @@ public abstract class LivingEntityMixin extends Entity {
             }
 
             // === 是首杀！计算点数 ===
-            int points = 1; // 基础分 (比如杀牛杀羊)
+            int points = 5; // 基础分 (比如杀牛杀羊)
             String rankKey = "notification.ascension.header.kill.first"; // 默认：首杀
             Formatting color = Formatting.WHITE;
 
@@ -100,12 +116,12 @@ public abstract class LivingEntityMixin extends Entity {
                 color = Formatting.LIGHT_PURPLE;
             } else {
                 if (isHostile) {
-                    points += 1;
+                    points += 5;
                     rankKey = "notification.ascension.header.kill.hostile"; // 狩猎
                     color = Formatting.YELLOW;
                 }
                 if (isHard) {
-                    points += 1;
+                    points += 5;
                     // 如果既是敌对又是强敌，这里会覆盖上面的 Key，显示“强敌击破”
                     rankKey = "notification.ascension.header.kill.hard";
                     color = Formatting.RED;
@@ -133,6 +149,31 @@ public abstract class LivingEntityMixin extends Entity {
             PacketUtils.sendNotification(player, msg);
 
             player.playSound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.PLAYERS, 0.4f, 1.0f + (points * 0.1f));
+        }
+    }
+
+    // === 舍身一击：伤害提升 ===
+    @Inject(method = "damage", at = @At("HEAD"))
+    private void onDamageSacrificial(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
+        if (source.getAttacker() instanceof ServerPlayerEntity player) {
+            // 检查状态
+            if (((com.qishui48.ascension.util.ISacrificialState) player).isSacrificialReady()) {
+                if (PacketUtils.isSkillActive(player, "sacrificial_strike")) {
+                    // 消耗掉状态 (只生效第1次)
+                    ((com.qishui48.ascension.util.ISacrificialState) player).setSacrificialReady(false);
+
+                    // 计算加成
+                    // 原理：damage 修改比较麻烦，这里我们通过 addStatusEffect 或者直接修改 amount 传参不太行（因为 float 是值传递）
+                    // 在 Mixin 中修改伤害通常建议 ModifyVariable，但这里我们需要访问 player 状态。
+                    // 简单的办法：直接在这里对目标造成额外伤害，或者应用短暂的力量效果？
+                    // 不，最标准的是在 PlayerEntity.getAttackDamage 修改，或者 ModifyVariable。
+                    // 这里为了方便，我们使用 ModifyVariable 在 PlayerDamageMixin 里做，这里只负责重置状态？
+                    // 不行，重置状态必须在伤害生效后。
+
+                    // 让我们换个思路：我们在 PlayerDamageMixin 里做计算和重置。
+                    // 这里只负责“空中击杀统计”。
+                }
+            }
         }
     }
 }

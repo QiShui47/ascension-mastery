@@ -4,6 +4,7 @@ import com.qishui48.ascension.Ascension;
 import com.qishui48.ascension.skill.SkillEffectHandler;
 import com.qishui48.ascension.util.IEntityDataSaver;
 import com.qishui48.ascension.util.PacketUtils;
+import com.qishui48.ascension.util.ISacrificialState;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
@@ -20,6 +21,7 @@ import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.registry.tag.BlockTags;
+import net.minecraft.registry.tag.FluidTags;
 import net.minecraft.registry.tag.StructureTags;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
@@ -30,6 +32,7 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Util;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import java.util.Optional;
 import net.minecraft.nbt.NbtCompound;
@@ -46,7 +49,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import static com.qishui48.ascension.skill.SkillEffectHandler.applySugarMasterEffect;
 
 @Mixin(PlayerEntity.class)
-public abstract class PlayerEntityMixin {
+public abstract class PlayerEntityMixin implements com.qishui48.ascension.util.ISacrificialState {
 
     @Shadow public abstract HungerManager getHungerManager();
 
@@ -302,7 +305,7 @@ public abstract class PlayerEntityMixin {
                 }
             }
 
-            // === [新增] 下界旅行检测 (每 Tick 检测) ===
+            // === 下界旅行检测 (每 Tick 检测) ===
             // 只有在下界时才计算
             if (player.getWorld().getRegistryKey() == World.NETHER) {
                 if (!initializedNetherPos) {
@@ -377,6 +380,11 @@ public abstract class PlayerEntityMixin {
                         // 减去 100米，保留余数
                         dynamoDistAccumulator -= 10000;
                     }
+                }
+                // === 水下移动统计 ===
+                // 只要整个人泡在水里 (isSubmergedIn) 且移动，就算 (包含游泳和水底走)
+                if (player.isSubmergedIn(FluidTags.WATER)) {
+                    serverPlayer.getStatHandler().increaseStat(serverPlayer, Stats.CUSTOM.getOrCreateStat(Ascension.MOVE_UNDERWATER), (int)distCm);
                 }
             }
 
@@ -575,6 +583,129 @@ public abstract class PlayerEntityMixin {
         }
 
         cir.setReturnValue(speed);
+    }
+
+    @Unique private int glassWaterBreathingTicks = 0;
+
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void onTickBrainInAJar(CallbackInfo ci) {
+        PlayerEntity player = (PlayerEntity) (Object) this;
+        // 只在服务端处理 Buff 给予 (客户端会自动同步 Buff 状态)
+        if (!player.getWorld().isClient && player instanceof ServerPlayerEntity serverPlayer) {
+
+            if (PacketUtils.isSkillActive(serverPlayer, "brain_in_a_jar")) {
+                ItemStack headStack = player.getEquippedStack(net.minecraft.entity.EquipmentSlot.HEAD);
+                boolean isGlass = !headStack.isEmpty() && headStack.getItem() instanceof net.minecraft.item.BlockItem bi &&
+                        bi.getBlock() instanceof net.minecraft.block.AbstractGlassBlock;
+
+                if (isGlass) {
+                    // 1. 如果头在空气中 (不在水里)
+                    if (!player.isSubmergedIn(FluidTags.WATER)) {
+
+                        // 获取最大时间
+                        int level = PacketUtils.getSkillLevel(serverPlayer, "brain_in_a_jar");
+                        int duration = 12 * 20;
+                        if (level >= 2) duration = 24 * 20;
+                        if (level >= 3) duration = 36 * 20;
+                        if (level >= 4) duration = 48 * 20;
+                        if (level >= 5) duration = 60 * 20;
+
+                        // 2. 补充 Buff (如果当前没有，或者持续时间不满，就覆盖)
+                        // 使用 ambient=false, showParticles=false, showIcon=true
+                        // 这样每 tick 刷新，玩家看到的就是满的时间
+                        player.addStatusEffect(new StatusEffectInstance(StatusEffects.WATER_BREATHING, duration, 0, false, false, true));
+                    }
+                    // 3. 如果头在水里 -> 什么都不做，让 Buff 自然倒计时
+                }
+            }
+        }
+    }
+
+    @Unique private int melancholicTimer = 0;
+    @Unique private int melancholicBuffRetention = 0; // 抗性 buff 的残留时间
+
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void onTickMelancholic(CallbackInfo ci) {
+        PlayerEntity player = (PlayerEntity) (Object) this;
+        if (!player.getWorld().isClient && player instanceof ServerPlayerEntity serverPlayer) {
+
+            if (PacketUtils.isSkillActive(serverPlayer, "melancholic_personality")) {
+                int level = PacketUtils.getSkillLevel(serverPlayer, "melancholic_personality");
+                World world = player.getWorld();
+                BlockPos pos = player.getBlockPos();
+
+                // 1. 环境判定：(下雨 或 雷暴) 且 头顶能看到天
+                boolean isWeatherBad = world.isRaining() || world.isThundering();
+                // isSkyVisible 判定位置是否能直视天空 (透明方块也算遮挡，如果需要穿过玻璃判定更复杂，这里用原版逻辑)
+                boolean isExposed = world.isSkyVisible(pos);
+
+                // 生物群系也得下雨才行 (沙漠里下雨天是不下雨的)
+                boolean biomeRains = world.getBiome(pos).value().getPrecipitation(pos) != net.minecraft.world.biome.Biome.Precipitation.NONE;
+
+                boolean conditionMet = isWeatherBad && isExposed && biomeRains;
+
+                // === 效果 1: 缓慢恢复 (Lv1+) ===
+                if (conditionMet) {
+                    melancholicTimer++;
+
+                    // 每 4秒 (80 tick) 回半颗心
+                    if (melancholicTimer % 80 == 0) {
+                        if (player.getHealth() < player.getMaxHealth()) {
+                            player.heal(1.0f);
+                        }
+                    }
+                    // 每 6秒 (120 tick) 回半个鸡腿
+                    if (melancholicTimer % 120 == 0) {
+                        player.getHungerManager().add(1, 0.0f);
+                    }
+
+                    // 满足条件时，重置残留时间 (12秒 = 240 tick)
+                    if (level >= 2) {
+                        melancholicBuffRetention = 240;
+                    }
+                } else {
+                    // 不满足条件，计时器不重置，但也不增加，或者你可以选择归零
+                    // 这里归零比较合理，断了就要重新蓄力
+                    melancholicTimer = 0;
+                }
+
+                // === 效果 2: 抗性提升 (Lv2+) ===
+                if (level >= 2) {
+                    if (melancholicBuffRetention > 0) {
+                        // 给予抗性 I (showParticles=false)
+                        player.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, 10, 0, false, false, true));
+                        melancholicBuffRetention--;
+                    }
+                }
+            }
+        }
+    }
+
+    // === 补全：上升高度统计 ===
+    @Unique private double lastYForAscend = -9999; // 初始值设为特殊值
+
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void onTickAscension(CallbackInfo ci) {
+        PlayerEntity player = (PlayerEntity) (Object) this;
+        if (!player.getWorld().isClient && player instanceof ServerPlayerEntity serverPlayer) {
+
+            // 初始化
+            if (lastYForAscend == -9999) {
+                lastYForAscend = player.getY();
+            }
+
+            double dy = player.getY() - lastYForAscend;
+
+            // 1. 只统计上升 (dy > 0)
+            // 2. 过滤掉瞬间传送 (例如 dy > 10 通常是传送)
+            if (dy > 0 && dy < 10) {
+                // 增加统计 (单位 cm)
+                serverPlayer.getStatHandler().increaseStat(serverPlayer, Stats.CUSTOM.getOrCreateStat(Ascension.ASCEND_HEIGHT), (int)(dy * 100));
+            }
+
+            // 更新高度
+            lastYForAscend = player.getY();
+        }
     }
 
     @Unique

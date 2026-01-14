@@ -57,28 +57,28 @@ public abstract class LootableContainerBlockEntityMixin {
 
             // 根据 lootId 字符串包含的关键词来判断
             if (lootId.contains("stronghold")) {
-                points = 7;
+                points = 15;
                 typeKey = "type.ascension.structure.stronghold";
             } else if (lootId.contains("ancient_city")) {
-                points = 10;
+                points = 20;
                 typeKey = "type.ascension.structure.ancient_city";
             } else if (lootId.contains("end_city")) {
-                points = 10;
+                points = 20;
                 typeKey = "type.ascension.structure.end_city";
             } else if (lootId.contains("fortress")) { // nether_bridge usually refers to fortress chests
-                points = 7;
+                points = 15;
                 typeKey = "type.ascension.structure.fortress";
             } else if (lootId.contains("bastion")) {
-                points = 7;
+                points = 15;
                 typeKey = "type.ascension.structure.bastion";
             } else if (lootId.contains("temple") || lootId.contains("pyramid") || lootId.contains("outpost")) {
-                points = 5;
+                points = 10;
                 typeKey = "type.ascension.structure.temple";
             } else if (lootId.contains("mineshaft")) {
-                points = 3;
+                points = 5;
                 typeKey = "type.ascension.structure.mineshaft";
             } else if (lootId.contains("dungeon") || lootId.contains("monster_room")) {
-                points = 3;
+                points = 5;
                 typeKey = "type.ascension.structure.dungeon";
             }
 

@@ -56,15 +56,15 @@ public abstract class PlayerAdvancementTrackerMixin {
 
                 switch (frame) {
                     case TASK:
-                        points = 5;
+                        points = 10;
                         headerKey = "notification.ascension.header.advancement.task";
                         break;
                     case GOAL:
-                        points = 15;
+                        points = 25;
                         headerKey = "notification.ascension.header.advancement.goal";
                         break;
                     case CHALLENGE:
-                        points = 45;
+                        points = 50;
                         headerKey = "notification.ascension.header.advancement.challenge";
                         break;
                 }

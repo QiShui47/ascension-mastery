@@ -27,6 +27,11 @@ public class BrewingStandSlotMixin {
 
                 serverPlayer.getStatHandler().increaseStat(serverPlayer, Stats.CUSTOM.getOrCreateStat(Ascension.BREW_FIRE_RES_POTION), 1);
             }
+            // === 缸中之脑：水肺药水 ===
+            if (PotionUtil.getPotion(stack) == Potions.WATER_BREATHING ||
+                    PotionUtil.getPotion(stack) == Potions.LONG_WATER_BREATHING) {
+                serverPlayer.getStatHandler().increaseStat(serverPlayer, Stats.CUSTOM.getOrCreateStat(Ascension.BREW_WATER_BREATHING), 1);
+            }
         }
     }
 }

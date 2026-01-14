@@ -1,11 +1,13 @@
 package com.qishui48.ascension.mixin;
 
+import com.qishui48.ascension.skill.SkillEffectHandler;
 import com.qishui48.ascension.util.PacketUtils;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.ItemStack;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
@@ -91,6 +93,30 @@ public class PlayerDamageMixin {
                         attacker.setOnFireFor(5); // 点燃 5 秒
                         // 播放点燃音效
                         player.getWorld().playSound(null, attacker.getBlockPos(), SoundEvents.ITEM_FLINTANDSTEEL_USE, SoundCategory.PLAYERS, 1.0f, 1.0f);
+                    }
+                }
+            }
+
+            // === 缸中之脑：玻璃破碎 ===
+            // 只要受到伤害（amount > 0），就有概率碎
+            if (amount > 0 && PacketUtils.isSkillActive(serverPlayer, "brain_in_a_jar")) {
+                ItemStack headStack = player.getEquippedStack(net.minecraft.entity.EquipmentSlot.HEAD);
+                if (!headStack.isEmpty() && headStack.getItem() instanceof net.minecraft.item.BlockItem bi &&
+                        bi.getBlock() instanceof net.minecraft.block.AbstractGlassBlock) {
+
+                    int level = PacketUtils.getSkillLevel(serverPlayer, "brain_in_a_jar");
+                    float breakChance = (level >= 5) ? 0.05f : 0.5f; // Lv5: 5%, 其他: 50%
+
+                    if (serverPlayer.getRandom().nextFloat() < breakChance) {
+                        // 碎了！
+                        player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
+                                SoundEvents.BLOCK_GLASS_BREAK, SoundCategory.PLAYERS, 1.0f, 1.0f);
+                        player.getWorld().syncWorldEvent(2001, player.getBlockPos().up(), net.minecraft.block.Block.getRawIdFromState(bi.getBlock().getDefaultState()));
+
+                        headStack.decrement(1); // 扣除物品
+
+                        // 刷新属性（移除护甲加成）
+                        SkillEffectHandler.refreshAttributes(serverPlayer);
                     }
                 }
             }
