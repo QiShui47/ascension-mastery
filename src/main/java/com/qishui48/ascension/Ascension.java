@@ -60,6 +60,8 @@ public class Ascension implements ModInitializer {
 	public static final Identifier KILL_CHARGED_CREEPER = new Identifier(MOD_ID, "kill_charged_creeper");//击杀闪电苦力怕
 	public static final Identifier ASCEND_HEIGHT = new Identifier(MOD_ID, "ascend_height"); // 上升高度
 	public static final Identifier KILL_ZOMBIE_AIR = new Identifier(MOD_ID, "kill_zombie_air"); // 空中杀僵尸
+	public static final Identifier SURVIVE_ELYTRA_CRASH = new Identifier(MOD_ID, "survive_elytra_crash"); //坠机生还
+	public static final Identifier ENCHANT_SWORD_THREE_TIMES = new Identifier(MOD_ID, "enchant_sword_three_times"); //强化剑3次
 
 	@Override
 	public void onInitialize() {
@@ -116,6 +118,8 @@ public class Ascension implements ModInitializer {
 		Registry.register(Registries.CUSTOM_STAT, KILL_CHARGED_CREEPER, KILL_CHARGED_CREEPER);
 		Registry.register(Registries.CUSTOM_STAT, ASCEND_HEIGHT, ASCEND_HEIGHT);
 		Registry.register(Registries.CUSTOM_STAT, KILL_ZOMBIE_AIR, KILL_ZOMBIE_AIR);
+		Registry.register(Registries.CUSTOM_STAT, SURVIVE_ELYTRA_CRASH, SURVIVE_ELYTRA_CRASH);
+		Registry.register(Registries.CUSTOM_STAT, ENCHANT_SWORD_THREE_TIMES, ENCHANT_SWORD_THREE_TIMES);
 		SkillRegistry.registerAll();
 
 		//踏足新维度的事件

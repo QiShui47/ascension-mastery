@@ -98,6 +98,7 @@
   "message.ascension.mutex_locked": "Mutually exclusive with %s!",
   "message.ascension.parent_locked_any": "Parent locked! You must unlock at least one parent skill.",
   "message.ascension.refund_points": "[Ascension] Skill cost adjustment detected. %s skill points have been refunded.",
+  "message.ascension.flight_no_space": "Not enough headroom to fly!",
 
   "enchantment.ascension.life_steal": "Life Steal",
   "enchantment.ascension.speed_steal": "Speed Steal",
@@ -110,7 +111,7 @@
   "skill.ascension.root": "Basics",
   "skill.ascension.root.desc": "Where it all begins.",
 
-  "skill.ascension.combat": "Combat 101",
+  "skill.ascension.combat": "Combat",
   "skill.ascension.combat.desc": "Gain an advantage in battle.",
 
   "skill.ascension.survival": "Survival Skills",
@@ -241,6 +242,10 @@
   "skill.ascension.human_dynamo.desc": "Kinetic conversion! Gain 5 XP for every 100 meters traveled.",
   "skill.ascension.human_dynamo.desc.2": "Gain 8 XP for every 100 meters traveled.",
   "skill.ascension.human_dynamo.desc.3": "Gain 11 XP for every 100 meters traveled.",
+
+  "skill.ascension.sword_flight": "Sword Flight",
+  "skill.ascension.sword_flight.desc": "Equip a Sword in your Boots slot to fly! Sprint to accelerate. Consumes sword durability while flying.",
+  "skill.ascension.sword_flight.desc.2": "Max speed increased to 1.5x, but durability cost is doubled. Crashing into enemies deals massive damage and unequips the sword.",
 
   "criterion.ascension.eat_apple": "Ate %s apples",
   "criterion.ascension.kill_cow": "Killed %s cows",

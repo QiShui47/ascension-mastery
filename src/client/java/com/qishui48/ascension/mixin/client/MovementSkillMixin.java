@@ -6,6 +6,8 @@ import com.qishui48.ascension.util.MotionJumpUtils;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.item.SwordItem;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.util.math.Vec3d;
 import org.spongepowered.asm.mixin.Mixin;
@@ -32,6 +34,9 @@ public class MovementSkillMixin {
         ClientPlayerEntity player = (ClientPlayerEntity) (Object) this;
         if (boostCooldown > 0) boostCooldown--;
 
+        // === [新增] 冲突检测：如果正在御剑飞行，禁止所有跳跃技能 ===
+        boolean isSwordFlying = player.getEquippedStack(EquipmentSlot.FEET).getItem() instanceof SwordItem;
+
         // ==================================================
         // 1. 状态重置 (落地重置)
         // ==================================================
@@ -49,7 +54,8 @@ public class MovementSkillMixin {
         // 2. 蓄力跳 (Charged Jump) - 保持不变
         // ==================================================
         // 注意：这里调用 getSkillLevel，如果返回 > 0 则为真
-        boolean canCharge = player.isOnGround() && player.isSneaking() && getSkillLevel(player, "charged_jump") > 0;
+        // [修改] 增加 !isSwordFlying 判断
+        boolean canCharge = !isSwordFlying && player.isOnGround() && player.isSneaking() && getSkillLevel(player, "charged_jump") > 0;
 
         if (canCharge && player.input.jumping) {
             wasCharging = true;
@@ -78,7 +84,7 @@ public class MovementSkillMixin {
         // ==================================================
         // 3. 多段跳 (Multi-Jump / Rocket Boost) - 核心修改
         // ==================================================
-        if (!player.isOnGround() && player.input.jumping && boostCooldown == 0 && jumpKeyReleasedInAir) {
+        if (!isSwordFlying && !player.isOnGround() && player.input.jumping && boostCooldown == 0 && jumpKeyReleasedInAir) {
 
             if (isSkillActive(player, "rocket_boost")) {
                 // 获取技能等级

@@ -24,7 +24,9 @@
 		"BoatEntityMixin",
 		"ItemMixin",
 		"CraftingResultSlotMixin",
-		"PlayerAttackMixin"
+		"PlayerAttackMixin",
+		"AnvilScreenHandlerMixin",
+		"LivingEntityAccessor"
 	],
 	"injectors": {
 		"defaultRequire": 1

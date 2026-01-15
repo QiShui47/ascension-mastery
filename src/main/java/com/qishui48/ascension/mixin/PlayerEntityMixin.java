@@ -6,6 +6,7 @@ import com.qishui48.ascension.util.IEntityDataSaver;
 import com.qishui48.ascension.util.PacketUtils;
 import com.qishui48.ascension.util.ISacrificialState;
 import net.minecraft.block.BlockState;
+import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.HungerManager;
@@ -45,6 +46,17 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import net.minecraft.item.SwordItem;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.damage.DamageTypes;
+import net.minecraft.world.RaycastContext;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.HitResult;
+import java.util.List;
 
 import static com.qishui48.ascension.skill.SkillEffectHandler.applySugarMasterEffect;
 
@@ -681,7 +693,7 @@ public abstract class PlayerEntityMixin implements com.qishui48.ascension.util.I
         }
     }
 
-    // === 补全：上升高度统计 ===
+    // === 上升高度统计 ===
     @Unique private double lastYForAscend = -9999; // 初始值设为特殊值
 
     @Inject(method = "tick", at = @At("HEAD"))
@@ -696,8 +708,8 @@ public abstract class PlayerEntityMixin implements com.qishui48.ascension.util.I
 
             double dy = player.getY() - lastYForAscend;
 
-            // 1. 只统计上升 (dy > 0)
-            // 2. 过滤掉瞬间传送 (例如 dy > 10 通常是传送)
+            // 只统计上升 (dy > 0)
+            // 过滤掉瞬间传送 (例如 dy > 10 通常是传送)
             if (dy > 0 && dy < 10) {
                 // 增加统计 (单位 cm)
                 serverPlayer.getStatHandler().increaseStat(serverPlayer, Stats.CUSTOM.getOrCreateStat(Ascension.ASCEND_HEIGHT), (int)(dy * 100));
@@ -714,6 +726,293 @@ public abstract class PlayerEntityMixin implements com.qishui48.ascension.util.I
         lastSmeltingStack = currentStack.copy();
         if (!currentStack.isEmpty()) {
             player.getItemCooldownManager().set(currentStack.getItem(), 0);
+        }
+    }
+
+    // === [修复崩溃] 补全接口实现 ===
+    @Unique
+    private boolean isSacrificialReady = false;
+
+    @Override
+    public void setSacrificialReady(boolean ready) {
+        this.isSacrificialReady = ready;
+    }
+
+    @Override
+    public boolean isSacrificialReady() {
+        return this.isSacrificialReady;
+    }
+
+    // 辅助方法：根据材质获取速度加成
+    @Unique
+    private double getMaterialSpeedMultiplier(ItemStack stack) {
+        if (!(stack.getItem() instanceof SwordItem sword)) return 1.0;
+
+        // 获取材质对象
+        net.minecraft.item.ToolMaterial material = sword.getMaterial();
+
+        // 注意：这是原版材质的判断方式
+        if (material == net.minecraft.item.ToolMaterials.WOOD) return 1.0;       // +0%
+        if (material == net.minecraft.item.ToolMaterials.STONE) return 1.1;      // +10%
+        if (material == net.minecraft.item.ToolMaterials.IRON) return 1.15;      // +15%
+        if (material == net.minecraft.item.ToolMaterials.DIAMOND) return 1.2;    // +20%
+        if (material == net.minecraft.item.ToolMaterials.GOLD) return 1.22;      // +22%
+        if (material == net.minecraft.item.ToolMaterials.NETHERITE) return 1.25; // +25%
+
+        return 1.0; // 默认
+    }
+
+    // === 御剑飞行 核心变量 ===
+    @Unique private int swordFlightHoverTimer = 0;
+    @Unique private boolean isSwordFlying = false; // 用于同步给客户端渲染
+
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void onTickSwordFlight(CallbackInfo ci) {
+        PlayerEntity player = (PlayerEntity) (Object) this;
+
+        // 0. 基础检查
+        if (player.isSpectator() || !player.isAlive()) {
+            this.isSwordFlying = false;
+            return;
+        }
+
+        // 1. 检查装备
+        ItemStack feetStack = player.getEquippedStack(EquipmentSlot.FEET);
+        if (!(feetStack.getItem() instanceof SwordItem)) {
+            this.isSwordFlying = false;
+            return;
+        }
+
+        // 2. 检查技能
+        boolean hasSkill = false;
+        if (player instanceof ServerPlayerEntity serverPlayer) {
+            hasSkill = PacketUtils.isSkillActive(serverPlayer, "sword_flight");
+        } else {
+            hasSkill = true;
+        }
+
+        if (!hasSkill) {
+            this.isSwordFlying = false;
+            return;
+        }
+
+        // === [优化] 起飞安检 ===
+        // 只有在当前并未飞行（准备起飞）时，才检查空间
+        // 一旦起飞成功 (isSwordFlying = true)，之后就不再检查，防止飞行中途经过低矮处坠机
+        if (!this.isSwordFlying) {
+            // 检测点：眼睛高度 + 0.6 (头部空间)
+            if (!player.getWorld().isClient && !player.getWorld().getBlockState(BlockPos.ofFloored(player.getX(), player.getEyeY() + 0.6, player.getZ())).isAir()) {
+                if (player instanceof ServerPlayerEntity serverPlayer) {
+                    unequipSword(serverPlayer, feetStack);
+                    player.sendMessage(Text.translatable("message.ascension.flight_no_space").formatted(Formatting.RED), true);
+                }
+                // 标记为 false，阻止后续飞行逻辑
+                this.isSwordFlying = false;
+                return;
+            }
+        }
+
+        this.isSwordFlying = true;
+
+        // === 3. 物理飞行逻辑 ===
+        player.setNoGravity(true);
+        player.fallDistance = 0;
+
+        Vec3d lookDir = player.getRotationVector();
+        int level = 1;
+        if (player instanceof ServerPlayerEntity sp) {
+            level = PacketUtils.getSkillLevel(sp, "sword_flight");
+        }
+
+        // 数值设置
+        double baseMaxSpeed = (level >= 2) ? 4.5 : 3.0;
+        double materialMultiplier = getMaterialSpeedMultiplier(feetStack);
+        double finalMaxSpeed = baseMaxSpeed * materialMultiplier;
+        double horizontalInertia = 0.962;
+        double verticalInertia = 0.975;
+
+        double targetY = 0;
+        boolean isJumping = ((LivingEntityAccessor) player).isJumping();
+
+        if (isJumping) targetY += 1.1;
+        if (player.isSneaking()) targetY -= 1.2;
+
+        boolean isPressingForward = player.forwardSpeed > 0.01f;
+
+        // 计算推力
+        double sprintAcceleration = finalMaxSpeed * (1 - horizontalInertia) * 0.77;
+        double verticalSprintAcceleration = finalMaxSpeed * (1 - verticalInertia) * 0.4;
+        double walkAcceleration = sprintAcceleration * 0.05;
+
+        if (player.isSprinting()) {
+            player.addVelocity(lookDir.x * sprintAcceleration, targetY * verticalSprintAcceleration, lookDir.z * sprintAcceleration);
+        } else if (isPressingForward) {
+            player.addVelocity(lookDir.x * walkAcceleration, targetY * 0.05, lookDir.z * walkAcceleration);
+        } else {
+            player.addVelocity(0, targetY * 0.05, 0);
+        }
+
+        // === 磁悬浮底盘逻辑 ===
+        // 向下发射射线检测地面距离
+        Vec3d rayStart = player.getPos();
+        Vec3d rayEnd = rayStart.add(0, -1.2, 0); // 检测脚下 1.2 米
+
+        BlockHitResult hitResult = player.getWorld().raycast(new RaycastContext(
+                rayStart, rayEnd,
+                RaycastContext.ShapeType.COLLIDER,
+                RaycastContext.FluidHandling.NONE,
+                player
+        ));
+
+        if (hitResult.getType() == HitResult.Type.BLOCK) {
+            double distanceToGround = hitResult.getPos().distanceTo(rayStart);
+            double hoverHeight = 0.5; // 目标悬浮高度
+
+            if (distanceToGround < hoverHeight) {
+                // 如果低于悬浮高度，施加一个向上的"弹簧力"
+                // 距离越近，推力越大，模拟磁斥力
+                double pushForce = (hoverHeight - distanceToGround) * 0.18;
+                // 只施加向上推力，不改变水平速度
+                player.addVelocity(0, pushForce, 0);
+            }
+        }
+
+        // 速度限制
+        Vec3d newVel = player.getVelocity();
+        double horizontalSpeed = Math.sqrt(newVel.x * newVel.x + newVel.z * newVel.z);
+        double currentMaxSpeedLimit = player.isSprinting() ? finalMaxSpeed : (finalMaxSpeed * 0.3);
+
+        if (horizontalSpeed > currentMaxSpeedLimit) {
+            double scale = currentMaxSpeedLimit / horizontalSpeed;
+            newVel = new Vec3d(newVel.x * scale, newVel.y, newVel.z * scale);
+        }
+        player.setVelocity(newVel.multiply(horizontalInertia));
+
+        // === 4. 服务端逻辑：破坏与碰撞 ===
+        if (!player.getWorld().isClient && player instanceof ServerPlayerEntity serverPlayer) {
+
+            // A. 饱食度
+            boolean isMoving = horizontalSpeed > 0.05 || Math.abs(newVel.y) > 0.05;
+            if (isMoving && player.isSprinting()) {
+                player.addExhaustion(0.03F);
+            }
+
+            // A. 耐久消耗
+            if (isMoving) {
+                double moveDivisor = (level >= 2) ? 2.0 : 1.0;
+                if (player.getRandom().nextDouble() < (horizontalSpeed / moveDivisor) * 0.5) {
+                    damageSword(serverPlayer, feetStack, 1);
+                }
+            } else {
+                swordFlightHoverTimer++;
+                int hoverThreshold = (level >= 2) ? 300 : 200;
+                if (swordFlightHoverTimer >= hoverThreshold) {
+                    swordFlightHoverTimer = 0;
+                    damageSword(serverPlayer, feetStack, 1);
+                }
+            }
+
+            // B. 实体碰撞 (撞击敌人)
+            Box killBox = player.getBoundingBox().expand(0.5, 0.2, 0.5).offset(0, -0.5, 0);
+            List<Entity> targets = player.getWorld().getOtherEntities(player, killBox);
+            for (Entity target : targets) {
+                if (target instanceof LivingEntity livingTarget) {
+                    float damage = (float) (horizontalSpeed * 20.0f);
+                    if (horizontalSpeed >= finalMaxSpeed * 0.9) damage *= 1.4f;
+                    if (damage < 2.0f) damage = 2.0f;
+
+                    livingTarget.damage(player.getDamageSources().playerAttack(player), damage);
+                    player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
+                            SoundEvents.ENTITY_IRON_GOLEM_DAMAGE, SoundCategory.PLAYERS, 1.0f, 2.0f);
+
+                    unequipSword(serverPlayer, feetStack);
+                    return;
+                }
+            }
+
+            // C. 方块破坏 (割草模式)
+            // 只有速度足够快时才触发
+            if (horizontalSpeed > 0.1) {
+                // 1. 计算剑尖位置 (速度方向前方 0.8 米)
+                Vec3d velocityDir = newVel.normalize();
+                Vec3d swordTipPos = player.getPos().add(velocityDir.multiply(0.8));
+
+                // 检查脚部高度的方块
+                BlockPos targetPos = BlockPos.ofFloored(swordTipPos.x, swordTipPos.y + 0.1, swordTipPos.z);
+                BlockState state = player.getWorld().getBlockState(targetPos);
+
+                if (!state.isAir() && state.getFluidState().isEmpty()) {
+                    // 2. 获取硬度
+                    float hardness = state.getHardness(player.getWorld(), targetPos);
+
+                    if (hardness < 0) {
+                        // 基岩/不可破坏：急停
+                        player.setVelocity(0, 0, 0);
+                    } else if (hardness <= 0.5f) {
+                        // === 软方块 (草/泥土/树叶) -> 破坏 ===
+                        if (player.getWorld().breakBlock(targetPos, true, player)) {
+                            damageSword(serverPlayer, feetStack, 1);
+                            // 轻微减速 (阻力感)
+                            player.setVelocity(newVel.multiply(0.98));
+                        }
+                    } else {
+                        // === 硬方块 -> 撞击判定 ===
+                        if (hardness >= 3.0f) {
+                            // 极硬 (矿石/黑曜石)：撞停 + 大量扣耐久 + 音效
+                            player.setVelocity(0, 0, 0);
+                            player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
+                                    SoundEvents.ITEM_SHIELD_BLOCK, SoundCategory.PLAYERS, 1.0f, 0.5f);
+                            damageSword(serverPlayer, feetStack, 5);
+                        } else {
+                            // 中等硬度 (木头/石头)：不破坏 + 大幅减速
+                            player.setVelocity(newVel.multiply(0.2));
+                            damageSword(serverPlayer, feetStack, 2);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 辅助方法：安全卸下剑
+    @Unique
+    private void unequipSword(ServerPlayerEntity player, ItemStack swordStack) {
+        ItemStack swordToReturn = swordStack.copy();
+        player.getEquippedStack(EquipmentSlot.FEET).setCount(0);
+        // 尝试塞回背包，塞不下就扔地上
+        if (!player.getInventory().insertStack(swordToReturn)) {
+            player.dropItem(swordToReturn, false);
+        }
+        this.isSwordFlying = false;
+        player.setNoGravity(false);
+    }
+
+    // 辅助：处理耐久并防止 index out of bounds
+    @Unique
+    private void damageSword(ServerPlayerEntity player, ItemStack stack, int amount) {
+        if (player.isCreative()) return;
+
+        // 这里的 callback 需要正确处理装备槽位破坏
+        stack.damage(amount, player, (p) -> p.sendEquipmentBreakStatus(EquipmentSlot.FEET));
+
+        if (stack.isEmpty()) {
+            player.playSound(SoundEvents.ENTITY_ITEM_BREAK, 1.0f, 1.0f);
+        }
+    }
+
+    // 注入：重置重力
+    // 当不再御剑时，确保重力恢复。
+    @Inject(method = "tick", at = @At("TAIL"))
+    private void restoreGravity(CallbackInfo ci) {
+        PlayerEntity player = (PlayerEntity) (Object) this;
+        ItemStack feetStack = player.getEquippedStack(EquipmentSlot.FEET);
+        boolean valid = (feetStack.getItem() instanceof SwordItem);
+
+        // 如果条件不满足，强制恢复重力 (防止 Bug 导致无限浮空)
+        if (!valid || !this.isSwordFlying) {
+            if (player.hasNoGravity() && !player.getAbilities().creativeMode && !player.isSpectator()) {
+                player.setNoGravity(false);
+            }
         }
     }
 }

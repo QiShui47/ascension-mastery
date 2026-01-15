@@ -14,6 +14,9 @@ import net.minecraft.client.util.InputUtil;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
+import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRegistrationCallback;
+import net.minecraft.client.render.entity.PlayerEntityRenderer;
+import com.qishui48.ascension.client.render.SwordFlightFeatureRenderer;
 
 public class AscensionClient implements ClientModInitializer {
 
@@ -36,6 +39,15 @@ public class AscensionClient implements ClientModInitializer {
 				if (client.currentScreen == null) {
 					client.setScreen(new SkillTreeScreen());
 				}
+			}
+		});
+
+		LivingEntityFeatureRendererRegistrationCallback.EVENT.register((entityType, entityRenderer, registrationHelper, context) -> {
+			if (entityRenderer instanceof PlayerEntityRenderer) {
+				registrationHelper.register(new SwordFlightFeatureRenderer(
+						(PlayerEntityRenderer) entityRenderer,
+						net.minecraft.client.MinecraftClient.getInstance().getItemRenderer()
+				));
 			}
 		});
 

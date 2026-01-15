@@ -58,6 +58,11 @@ public class SkillRegistry {
                 .addUpgradeCriterion(2, new UnlockCriterion(Stats.CUSTOM, Ascension.TRAVEL_NETHER, 200000, "criterion.ascension.travel_nether").setDisplayDivisor(100.0))
                 .addUpgradeCriterion(3, new UnlockCriterion(Stats.CUSTOM, Ascension.TRAVEL_END, 200000, "criterion.ascension.travel_end").setDisplayDivisor(100.0)));
 
+        // 御剑飞行 (Sword Flight)
+        register(new Skill("sword_flight", Items.DIAMOND_SWORD, 4, "human_dynamo", 2, 20, 30)
+                .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.SURVIVE_ELYTRA_CRASH, 1, "criterion.ascension.survive_elytra_crash"))
+                .addUpgradeCriterion(2, new UnlockCriterion(Stats.CUSTOM, Ascension.ENCHANT_SWORD_THREE_TIMES, 1, "criterion.ascension.enchant_sword_three_times")));
+
         // 糖分主理人 (Sugar Master) - 应用 AND 逻辑
         // 解锁需同时满足：[种地 AND 做面包]
         // 升级需同时满足：[收集蜂蜜 AND 收获南瓜]

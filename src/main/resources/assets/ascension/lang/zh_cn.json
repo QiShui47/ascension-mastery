@@ -98,6 +98,7 @@
   "message.ascension.mutex_locked": "与技能 %s 互斥，无法学习！",
   "message.ascension.parent_locked_any": "前置未解锁！你需要至少解锁一个前置技能。",
   "message.ascension.refund_points": "[Ascension] 检测到技能消耗调整，已为您返还 %s 点技能点。",
+  "message.ascension.flight_no_space": "头顶空间不足，无法御剑！",
 
   "enchantment.ascension.life_steal": "生命汲取",
   "enchantment.ascension.speed_steal": "速度偷取",
@@ -243,6 +244,10 @@
   "skill.ascension.human_dynamo.desc.2": "每移动 100米 获得 8点 经验。",
   "skill.ascension.human_dynamo.desc.3": "每移动 100米 获得 11点 经验。",
 
+  "skill.ascension.sword_flight": "御剑飞行",
+  "skill.ascension.sword_flight.desc": "将剑装备在靴子槽位即可御剑飞行！疾跑加速。飞行时消耗剑耐久。",
+  "skill.ascension.sword_flight.desc.2": "速度上限提升至 1.5倍，但耐久消耗也加倍。撞击敌人可造成巨额伤害并收剑。",
+
   "criterion.ascension.eat_apple": "吃过 %s 个苹果",
   "criterion.ascension.kill_cow": "击杀 %s 只牛",
   "criterion.ascension.jump": "跳跃 %s 次",
@@ -280,5 +285,7 @@
   "criterion.ascension.obtain_trident": "获得 %s 把三叉戟",
   "criterion.ascension.kill_charged_creeper": "击杀 %s 只高压爬行者",
   "criterion.ascension.ascend_height": "累计上升 %s 米",
-  "criterion.ascension.kill_zombie_air": "在空中击杀 %s 只僵尸"
+  "criterion.ascension.kill_zombie_air": "在空中击杀 %s 只僵尸",
+  "criterion.ascension.survive_elytra_crash": "鞘翅撞墙并濒死生还",
+  "criterion.ascension.enchant_sword_three_times": "用铁砧强化同一把剑 3 次"
 }

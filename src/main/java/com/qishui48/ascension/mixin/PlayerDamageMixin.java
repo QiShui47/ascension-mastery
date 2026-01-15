@@ -1,9 +1,11 @@
 package com.qishui48.ascension.mixin;
 
+import com.qishui48.ascension.Ascension;
 import com.qishui48.ascension.skill.SkillEffectHandler;
 import com.qishui48.ascension.util.PacketUtils;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.damage.DamageSource;
+import net.minecraft.entity.damage.DamageTypes;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.PlayerEntity;
@@ -11,6 +13,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
+import net.minecraft.stat.Stats;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -143,5 +146,23 @@ public class PlayerDamageMixin {
             }
         }
         return amount; // 其他情况保持原样
+    }
+
+    @Inject(method = "damage", at = @At("RETURN"))
+    private void onDamageReturn(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
+        PlayerEntity player = (PlayerEntity) (Object) this;
+        if (!player.getWorld().isClient && player instanceof ServerPlayerEntity serverPlayer) {
+
+            // 检查伤害来源是否是“飞入墙壁” (Elytra撞击)
+            if (source.isOf(DamageTypes.FLY_INTO_WALL)) {
+                // 检查剩余血量：0.5 颗心 = 1.0f
+                // 必须活着
+                if (player.getHealth() <= 1.0f && player.getHealth() > 0) {
+                    // 满足“御剑飞行”解锁条件：生死时速
+                    // 触发一个自定义统计数据，用于 UnlockCriterion
+                    serverPlayer.getStatHandler().increaseStat(serverPlayer, Stats.CUSTOM.getOrCreateStat(Ascension.SURVIVE_ELYTRA_CRASH), 1);
+                }
+            }
+        }
     }
 }
