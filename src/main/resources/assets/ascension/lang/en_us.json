@@ -67,7 +67,7 @@
   "gui.ascension.tooltip.criteria.met": "[✔] Criteria Met",
   "gui.ascension.tooltip.criteria.required": "[✖] Criteria Required:",
   "gui.ascension.tooltip.criteria.or": "--- OR ---",
-  "gui.ascension.tooltip.criteria.required_all": "[✖] Requires ALL:",
+  "gui.ascension.tooltip.criteria.required_all": "[✖] Requires ALL of:",
   "gui.ascension.tooltip.max_level": "[Max Level]",
   "gui.ascension.tooltip.cost": "Cost: %s Points",
   "gui.ascension.tooltip.parent_locked": "[Parent Skill Locked]",
@@ -80,6 +80,8 @@
   "gui.ascension.tooltip.hint.enable": "(M-Click to Enable)",
   "gui.ascension.tooltip.status.enabled": "[Enabled]",
   "gui.ascension.tooltip.hint.disable": "(M-Click to Disable)",
+  "gui.ascension.reset": "Reset Skill Tree",
+  "gui.ascension.reset.tooltip": "Reset all skills\nCost: 1395 XP (+1395/reset)\nCooldown: 10 Days\nRefunds all Skill Points",
 
   "_comment_command": "--- Command Feedback ---",
   "command.ascension.set_skills.success": "[Debug] Skill points set to: %s",
@@ -98,7 +100,12 @@
   "message.ascension.mutex_locked": "Mutually exclusive with %s!",
   "message.ascension.parent_locked_any": "Parent locked! You must unlock at least one parent skill.",
   "message.ascension.refund_points": "[Ascension] Skill cost adjustment detected. %s skill points have been refunded.",
-  "message.ascension.flight_no_space": "Not enough headroom to fly!",
+  "message.ascension.flight_no_space": "Not enough headroom for Sword Flight!",
+  "message.ascension.too_hungry_to_start": "You are too hungry to focus on reading...",
+  "message.ascension.too_hungry_to_read": "You are starving! You put the book down...",
+  "message.ascension.reset_cooldown": "Reset is on cooldown. Remaining: %s days",
+  "message.ascension.not_enough_xp": "Not enough Experience! Need %s XP.",
+  "message.ascension.reset_success": "Skill Tree reset! Skill points refunded.",
 
   "enchantment.ascension.life_steal": "Life Steal",
   "enchantment.ascension.speed_steal": "Speed Steal",
@@ -111,7 +118,7 @@
   "skill.ascension.root": "Basics",
   "skill.ascension.root.desc": "Where it all begins.",
 
-  "skill.ascension.combat": "Combat",
+  "skill.ascension.combat": "Combat 101",
   "skill.ascension.combat.desc": "Gain an advantage in battle.",
 
   "skill.ascension.survival": "Survival Skills",
@@ -119,6 +126,24 @@
 
   "skill.ascension.mining": "Excavation",
   "skill.ascension.mining.desc": "Improve efficiency in breaking and creating.",
+
+  "skill.ascension.miscellaneous": "Arcane Arts",
+  "skill.ascension.miscellaneous.desc": "Mysterious techniques beyond conventional survival.",
+
+  "skill.ascension.golden_house": "Golden House",
+  "skill.ascension.golden_house.desc": "Hold Right-Click to read Enchanted Books, converting Hunger into Experience. Reading progress is saved. (XP gain scales with enchantment levels).",
+  "skill.ascension.golden_house.desc.2": "Hold Right-Click to read Enchanted Books, converting Hunger into MORE Experience. Reading progress is saved.",
+  "skill.ascension.golden_house.desc.3": "Hold Right-Click to read Enchanted Books, converting Hunger into MASSIVE Experience. Reading progress is saved.",
+
+  "skill.ascension.telekinesis": "Telekinesis",
+  "skill.ascension.telekinesis.desc": "Manifest your will physically. Increases block interaction range by 1 block.",
+  "skill.ascension.telekinesis.desc.2": "Manifest your will physically. Increases block interaction range by 2 blocks.",
+
+  "skill.ascension.zhu_rong": "Zhu Rong's Blessing",
+  "skill.ascension.zhu_rong.desc": "Allows eating Magma Cream. Each consumed grants +2 Fire Damage on the next attack (Crit applied). Stacks up to 2 times.",
+  "skill.ascension.zhu_rong.desc.2": "Max stack count increased to 3.",
+  "skill.ascension.zhu_rong.desc.3": "Max stack count increased to 4.",
+  "skill.ascension.zhu_rong.desc.4": "Max stack count increased to 5. Set the world ablaze!",
 
   "skill.ascension.fire_resistance": "Fire Resistance",
   "skill.ascension.fire_resistance.desc": "Halves fire damage taken.",
@@ -133,13 +158,24 @@
   "skill.ascension.fire_res": "Fire Immunity",
   "skill.ascension.fire_res.desc": "Ignore fire damage, just like a Nether native.",
 
-  "skill.ascension.melancholic_personality": "Melancholic",
-  "skill.ascension.melancholic_personality.desc": "Regenerate HP & Hunger when exposed to rain/storm.",
-  "skill.ascension.melancholic_personality.desc.2": "Regens in rain. Grants Resistance I for 12s when condition lost.",
+  "skill.ascension.melancholic_personality": "Melancholic Personality",
+  "skill.ascension.melancholic_personality.desc": "Slowly regenerates health and hunger when exposed to the sky during Rain or Thunderstorms.",
+  "skill.ascension.melancholic_personality.desc.2": "Regenerates health and hunger in rain/thunder. If environment changes, grants Resistance I for 12s.",
 
   "skill.ascension.sacrificial_strike": "Sacrificial Strike",
-  "skill.ascension.sacrificial_strike.desc": "First hit after double-jump deals +20% damage. Closer to ground = more damage.",
-  "skill.ascension.sacrificial_strike.desc.2": "First hit after double-jump deals +40% damage. Closer to ground = more damage.",
+  "skill.ascension.sacrificial_strike.desc": "First attack after a multi-jump hang time deals +20% damage. Damage increases closer to the ground (up to +20% more).",
+  "skill.ascension.sacrificial_strike.desc.2": "First attack after a multi-jump hang time deals +40% damage. Damage increases closer to the ground (up to +20% more).",
+
+  "skill.ascension.wolf_pack": "Pack Leader",
+  "skill.ascension.wolf_pack.desc": "10% chance to summon 1-2 tamed wolves when hurt. Chance increases with damage taken (max +30%).",
+  "skill.ascension.wolf_pack.desc.2": "Max summon count increased to 3.",
+  "skill.ascension.wolf_pack.desc.3": "Max summon count increased to 4. If you have Bones in inventory, consumes them to guarantee summons!",
+
+  "skill.ascension.bamboo_cutting": "Bamboo Splitter",
+  "skill.ascension.bamboo_cutting.desc": "Smooth as cutting bamboo. Sword or Axe attacks have a 10% chance to instantly reset attack cooldown.",
+  "skill.ascension.bamboo_cutting.desc.2": "Trigger chance increased to 20%.",
+  "skill.ascension.bamboo_cutting.desc.3": "Trigger chance increased to 27%.",
+  "skill.ascension.bamboo_cutting.desc.4": "Trigger chance increased to 33%. Speed is paramount!",
 
   "skill.ascension.health_boost": "Health Boost",
   "skill.ascension.health_boost.desc": "Grants 2 extra hearts.",
@@ -149,14 +185,15 @@
   "skill.ascension.health_boost.desc.5": "Grants 10 extra hearts! Super Tanky.",
 
   "skill.ascension.dragon_boat_rower": "Dragon Boat Rower",
-  "skill.ascension.dragon_boat_rower.desc": "Rowing with a shovel boosts speed by 33%, consuming durability.",
-  "skill.ascension.dragon_boat_rower.desc.2": "Rowing with a shovel boosts speed by 66%, consuming durability.",
+  "skill.ascension.dragon_boat_rower.desc": "Rowing speed +33% when holding a Shovel, but consumes durability.",
+  "skill.ascension.dragon_boat_rower.desc.2": "Rowing speed +66% when holding a Shovel, but consumes durability.",
+
   "skill.ascension.brain_in_a_jar": "Brain in a Jar",
-  "skill.ascension.brain_in_a_jar.desc": "Allows wearing Glass. Grants 12s Water Breathing. Glass gives 1 Armor but has 50% break chance.",
-  "skill.ascension.brain_in_a_jar.desc.2": "Water Breathing extended to 24s.",
-  "skill.ascension.brain_in_a_jar.desc.3": "Water Breathing extended to 36s.",
-  "skill.ascension.brain_in_a_jar.desc.4": "Water Breathing extended to 48s.",
-  "skill.ascension.brain_in_a_jar.desc.5": "Water Breathing extended to 60s. Armor +2, break chance 5%.",
+  "skill.ascension.brain_in_a_jar.desc": "Allows wearing Glass as a helmet. Grants Water Breathing for 12s (like Turtle Shell). Glass provides 1 Armor, 50% break chance on hit.",
+  "skill.ascension.brain_in_a_jar.desc.2": "Allows wearing Glass as a helmet. Grants Water Breathing for 24s. Glass provides 1 Armor, 50% break chance on hit.",
+  "skill.ascension.brain_in_a_jar.desc.3": "Allows wearing Glass as a helmet. Grants Water Breathing for 36s. Glass provides 1 Armor, 50% break chance on hit.",
+  "skill.ascension.brain_in_a_jar.desc.4": "Allows wearing Glass as a helmet. Grants Water Breathing for 48s. Glass provides 1 Armor, 50% break chance on hit.",
+  "skill.ascension.brain_in_a_jar.desc.5": "Allows wearing Glass as a helmet. Grants Water Breathing for 60s. Glass provides 2 Armor, break chance reduced to 5%.",
 
   "skill.ascension.rocket_boost": "Rocket Boost",
   "skill.ascension.rocket_boost.desc": "Allows you to jump one extra time in mid-air.",
@@ -244,7 +281,7 @@
   "skill.ascension.human_dynamo.desc.3": "Gain 11 XP for every 100 meters traveled.",
 
   "skill.ascension.sword_flight": "Sword Flight",
-  "skill.ascension.sword_flight.desc": "Equip a Sword in your Boots slot to fly! Sprint to accelerate. Consumes sword durability while flying.",
+  "skill.ascension.sword_flight.desc": "Equip a Sword in your Boots slot to fly! Sprint to accelerate with high inertia. Consumes sword durability while flying.",
   "skill.ascension.sword_flight.desc.2": "Max speed increased to 1.5x, but durability cost is doubled. Crashing into enemies deals massive damage and unequips the sword.",
 
   "criterion.ascension.eat_apple": "Ate %s apples",
@@ -277,12 +314,27 @@
   "criterion.ascension.craft_bread": "Crafted %s Bread",
   "criterion.ascension.collect_honey": "Collected %s Honey Bottles",
   "criterion.ascension.harvest_pumpkin": "Harvested %s Pumpkins",
-  "criterion.ascension.move_underwater": "Move %s meters underwater",
-  "criterion.ascension.boat_on_ice": "Row %s meters on ice",
-  "criterion.ascension.brew_water_breathing": "Brew %s Water Breathing Potions",
-  "criterion.ascension.craft_tipped_arrow": "Craft %s Arrows of Water Breathing",
-  "criterion.ascension.obtain_trident": "Obtain %s Trident",
-  "criterion.ascension.kill_charged_creeper": "Kill %s Charged Creeper",
-  "criterion.ascension.ascend_height": "Ascend %s meters",
-  "criterion.ascension.kill_zombie_air": "Kill %s Zombies while airborne"
+  "criterion.ascension.move_underwater": "Traveled %s meters underwater",
+  "criterion.ascension.boat_on_ice": "Rowed a boat %s meters on ice",
+  "criterion.ascension.brew_water_breathing": "Brewed %s Potions of Water Breathing",
+  "criterion.ascension.craft_tipped_arrow": "Crafted %s Tipped Arrows",
+  "criterion.ascension.obtain_trident": "Obtained %s Trident(s)",
+  "criterion.ascension.kill_charged_creeper": "Killed %s Charged Creeper(s)",
+  "criterion.ascension.ascend_height": "Ascended %s meters (Cumulative)",
+  "criterion.ascension.kill_zombie_air": "Killed %s Zombies while airborne",
+  "criterion.ascension.survive_elytra_crash": "Survived a fatal Elytra crash",
+  "criterion.ascension.enchant_sword_three_times": "Reinforced the same sword 3 times using an Anvil",
+  "criterion.ascension.enchant_lv30": "Performed a Level 30 Enchantment",
+  "criterion.ascension.trade_4_books": "Obtained 4 different Enchanted Books via trading",
+  "criterion.ascension.place_block_count": "Placed %s blocks",
+  "criterion.ascension.use_64_pearls": "Used %s Ender Pearls",
+  "criterion.ascension.find_mushroom_island": "Discovered a Mushroom Fields biome",
+  "criterion.ascension.tame_2_dogs": "Tamed 2 Wolves",
+  "criterion.ascension.dog_kill_mob": "Had your Wolf kill 1 mob",
+  "criterion.ascension.mine_7_bamboo": "Mined 7 Bamboo",
+  "criterion.ascension.mine_27_bamboo": "Mined 27 Bamboo",
+  "criterion.ascension.mine_37_bamboo": "Mined 37 Bamboo",
+  "criterion.ascension.mine_47_bamboo": "Mined 47 Bamboo",
+  "criterion.ascension.harvest_nether_wart": "Harvested %s Nether Wart",
+  "criterion.ascension.explore_bastions": "Explored %s different Bastion Remnants"
 }
