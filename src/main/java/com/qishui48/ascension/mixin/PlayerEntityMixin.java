@@ -1010,7 +1010,7 @@ public abstract class PlayerEntityMixin implements com.qishui48.ascension.util.I
 
         // 如果条件不满足，强制恢复重力 (防止 Bug 导致无限浮空)
         if (!valid || !this.isSwordFlying) {
-            if (player.hasNoGravity() && !player.getAbilities().creativeMode && !player.isSpectator()) {
+            if (player.hasNoGravity() && !player.isSpectator()) {
                 player.setNoGravity(false);
             }
         }

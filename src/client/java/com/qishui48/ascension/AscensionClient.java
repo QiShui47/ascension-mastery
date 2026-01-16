@@ -108,5 +108,18 @@ public class AscensionClient implements ClientModInitializer {
 				NotificationHud.addMessage(text);
 			});
 		});
+
+		ClientPlayNetworking.registerGlobalReceiver(ModMessages.BAMBOO_CUTTING_SYNC_ID, (client, handler, buf, responseSender) -> {
+			client.execute(() -> {
+				if (client.player != null) {
+					// 强制重置客户端的攻击冷却计时器
+					// 需确保你已有 LivingEntityAccessor 且能在客户端访问（通常 Accessor 是通用的）
+					((com.qishui48.ascension.mixin.LivingEntityAccessor) client.player).setLastAttackedTicks(client.player.age - 100);
+
+					// 播放音效（可选，如果你希望只在触发时听到特殊声音）
+					// client.player.playSound(net.minecraft.sound.SoundEvents.BLOCK_BAMBOO_BREAK, 1.0f, 1.5f);
+				}
+			});
+		});
 	}
 }

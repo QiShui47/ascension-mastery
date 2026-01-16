@@ -1,6 +1,7 @@
 package com.qishui48.ascension.skill;
 
 import com.qishui48.ascension.Ascension;
+import net.minecraft.block.Blocks;
 import net.minecraft.entity.EntityType;
 import net.minecraft.item.Items;
 import net.minecraft.stat.Stats;
@@ -20,6 +21,7 @@ public class SkillRegistry {
         register(new Skill("combat", Items.IRON_SWORD, 1, "root", 1, 2));
         register(new Skill("survival",  Items.APPLE, 1, "root", 1, 2));
         register(new Skill("mining",  Items.WOODEN_PICKAXE, 1, "root", 1, 2));
+        register(new Skill("miscellaneous",  Items.STICK, 1, "root", 1, 2));
 
         // ==========================================================
         // === Survival Branch (生存系) ===
@@ -47,7 +49,8 @@ public class SkillRegistry {
         // 生命提升 (Tier 4) - 保持 OR 关系
         register(new Skill("health_boost", Items.GOLDEN_APPLE, 4, "excitement", 5, 5, 15, 25, 35, 45)
                 .addCriterion(new UnlockCriterion(Stats.USED, Items.APPLE, 1, "criterion.ascension.eat_apple"))
-                .addCriterion(new UnlockCriterion(Stats.KILLED, EntityType.COW, 1, "criterion.ascension.kill_cow")));
+                .addCriterion(new UnlockCriterion(Stats.KILLED, EntityType.COW, 1, "criterion.ascension.kill_cow"))
+                .addUpgradeCriterion(5, new UnlockCriterion(Stats.CUSTOM, Ascension.FIND_MUSHROOM_FIELDS, 1, "criterion.ascension.find_mushroom_island")));
 
         // 脚底抹油 (Tier 2)
         register(new Skill("swift_move", Items.LEATHER_BOOTS, 2, "survival", 3, 5, 7, 10));
@@ -64,8 +67,6 @@ public class SkillRegistry {
                 .addUpgradeCriterion(2, new UnlockCriterion(Stats.CUSTOM, Ascension.ENCHANT_SWORD_THREE_TIMES, 1, "criterion.ascension.enchant_sword_three_times")));
 
         // 糖分主理人 (Sugar Master) - 应用 AND 逻辑
-        // 解锁需同时满足：[种地 AND 做面包]
-        // 升级需同时满足：[收集蜂蜜 AND 收获南瓜]
         register(new Skill("sugar_master", Items.CAKE, 2, "survival", 3, 5, 10, 15)
                 .addCriteriaGroup( // 1级条件组 (AND)
                         new UnlockCriterion(Stats.CUSTOM, Ascension.COLLECT_CROP_VARIANTS, 4, "criterion.ascension.collect_crops"),
@@ -96,8 +97,13 @@ public class SkillRegistry {
         // === Combat Branch (战斗系) ===
         // ==========================================================
 
+        //祝融之力
+        register(new Skill("zhu_rong", Items.MAGMA_CREAM, 4, "battle_instinct", 4, 15, 20, 25, 30)
+                .addCriterion(new UnlockCriterion(Stats.MINED, net.minecraft.block.Blocks.NETHER_WART, 64, "criterion.ascension.harvest_nether_wart"))
+                .addUpgradeCriterion(4, new UnlockCriterion(Stats.CUSTOM, Ascension.EXPLORE_BASTION, 2, "criterion.ascension.explore_bastions")));
+
         // 火焰抵抗
-        register(new Skill("fire_resistance", Items.MAGMA_CREAM, 2, "combat", 2, 15, 25)
+        register(new Skill("fire_resistance", Items.MAGMA_CREAM, 2, "zhu_rong", 2, 15, 25)
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.BREW_FIRE_RES_POTION, 1, "criterion.ascension.brew_fire_res")));
 
         // 火焰感染
@@ -116,18 +122,19 @@ public class SkillRegistry {
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.SWIM_IN_LAVA, 20000, "criterion.ascension.swim_lava").setDisplayDivisor(100.0)));
 
         // 忧郁人格 (Melancholic Personality) - 父节点: combat (战斗入门)
-        register(new Skill("melancholic_personality", Items.GHAST_TEAR, 2, "combat", 2, 10, 15)
-                // 无解锁条件
-                // 升级条件: 击杀高压爬行者
+        register(new Skill("melancholic_personality", Items.GHAST_TEAR, 2, "battle_instinct", 2, 10, 15)
                 .addUpgradeCriterion(2, new UnlockCriterion(Stats.CUSTOM, Ascension.KILL_CHARGED_CREEPER, 1, "criterion.ascension.kill_charged_creeper")));
 
         // 舍身一击 (Sacrificial Strike) - 父节点: rocket_boost (空中推进)
         // 注意：rocket_boost 是 Combat 分支下的
-        register(new Skill("sacrificial_strike", Items.IRON_AXE, 3, "rocket_boost", 2, 15, 20)
-                // 解锁: 上升 2000 格 (200000 cm)
+        register(new Skill("sacrificial_strike", Items.IRON_AXE, 3, "rocket_boost", 2, 5, 10)
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.ASCEND_HEIGHT, 200000, "criterion.ascension.ascend_height").setDisplayDivisor(100.0))
-                // 升级: 空中击杀 50 僵尸
                 .addUpgradeCriterion(2, new UnlockCriterion(Stats.CUSTOM, Ascension.KILL_ZOMBIE_AIR, 50, "criterion.ascension.kill_zombie_air")));
+
+        // === [新增] 华丽掉落 ===
+        //register(new Skill("graceful_fall", Items.FEATHER, 2, "combat", 3, 5,5,10) // 假设花费为5
+        //       .addUpgradeCriterion(3, new UnlockCriterion("stat.ascension.fall_damage", 200, "criterion.ascension.accumulate_fall_damage"))
+        //);
 
         // 空中推进
         register(new Skill("rocket_boost", Items.FIREWORK_ROCKET, 2, "combat", 2, 5, 20)
@@ -141,12 +148,24 @@ public class SkillRegistry {
         // 战斗本能
         register(new Skill("battle_instinct", Items.GOLDEN_SWORD, 2, "combat", 3, 5, 10, 15));
 
+        // 狼群领袖 (Wolf Pack Leader)
+        register(new Skill("wolf_pack", Items.BONE, 3, "combat", 3, 10, 20, 30)
+                .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.TAME_DOG_COUNT, 2, "criterion.ascension.tame_2_dogs"))
+                .addUpgradeCriterion(3, new UnlockCriterion(Stats.CUSTOM, Ascension.DOG_KILL_MOB_COUNT, 1, "criterion.ascension.dog_kill_mob")));
+
+        // 斩竹 (Bamboo Cutting)
+        register(new Skill("bamboo_cutting", Items.BAMBOO, 4, "battle_instinct", 4, 10, 15, 20, 25)
+                .addCriterion(new UnlockCriterion(Stats.MINED, Blocks.BAMBOO, 7, "criterion.ascension.mine_7_bamboo"))
+                .addUpgradeCriterion(2, new UnlockCriterion(Stats.MINED, Blocks.BAMBOO, 27, "criterion.ascension.mine_27_bamboo"))
+                .addUpgradeCriterion(3, new UnlockCriterion(Stats.MINED, Blocks.BAMBOO, 37, "criterion.ascension.mine_37_bamboo"))
+                .addUpgradeCriterion(4, new UnlockCriterion(Stats.MINED, Blocks.BAMBOO, 47, "criterion.ascension.mine_47_bamboo")));
 
         // ==========================================================
         // === Mining Branch (挖掘系) ===
         // ==========================================================
-        register(new Skill("pocket_furnace", Items.FURNACE, 2, "mining", 2, 15, 20));
-
+        register(new Skill("pocket_furnace", Items.FURNACE, 2, "hephaestus_favor", 2, 15, 20)
+                .withVisualParent("academic_miner")
+        );
         // 赫菲斯托斯眷顾
         register(new Skill("hephaestus_favor", Items.QUARTZ, 3, "miner_frenzy", 3, 15, 15, 20)
                 .addCriterion(new UnlockCriterion(Stats.MINED, net.minecraft.block.Blocks.DEEPSLATE, 64, "criterion.ascension.mine_deepslate"))
@@ -174,11 +193,20 @@ public class SkillRegistry {
                 .addUpgradeCriterion(3, new UnlockCriterion(Stats.MINED, net.minecraft.block.Blocks.AMETHYST_CLUSTER, 1, "criterion.ascension.mine_amethyst")));
 
         // 学术派矿工 - 链式重构
-        register(new Skill("academic_miner", Items.IRON_PICKAXE, 3, "miner_frenzy", 2, 5, 10)
+        register(new Skill("academic_miner", Items.IRON_PICKAXE, 3, "miner_frenzy", 2, 10, 15)
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Stats.MINECART_ONE_CM, 10000, "criterion.ascension.minecart_travel").setDisplayDivisor(100.0))
                 .addUpgradeCriterion(2, new UnlockCriterion(Stats.MINED, net.minecraft.block.Blocks.EMERALD_ORE, 1, "criterion.ascension.mine_emerald_ore"))
                 .addUpgradeCriterion(2, new UnlockCriterion(Stats.MINED, net.minecraft.block.Blocks.DEEPSLATE_EMERALD_ORE, 1, "criterion.ascension.mine_deepslate_emerald_ore"))); // 这里两个是 OR 关系，如果你想变成 AND，改成 addUpgradeCriteriaGroup
 
+        // === 黄金屋 (Golden House) ===
+        register(new Skill("golden_house", Items.ENCHANTED_BOOK, 2, "miscellaneous", 3, 10, 20, 25)
+                .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.ENCHANT_WITH_LEVEL_30, 1, "criterion.ascension.enchant_lv30"))
+                .addUpgradeCriterion(3, new UnlockCriterion(Stats.CUSTOM, Ascension.TRADE_DIFFERENT_ENCHANTED_BOOKS, 4, "criterion.ascension.trade_4_books")));
+
+        // === 念力 (Telekinesis) ===
+        register(new Skill("telekinesis", Items.ENDER_EYE, 2, "mining", 2, 10, 15)
+                .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.PLACE_BLOCK_COUNT, 2000, "criterion.ascension.place_block_count"))
+                .addUpgradeCriterion(2, new UnlockCriterion(Stats.CUSTOM, Ascension.USE_ENDER_PEARL_COUNT, 64, "criterion.ascension.use_64_pearls")));
         // 计算布局
         calculateLayout();
     }

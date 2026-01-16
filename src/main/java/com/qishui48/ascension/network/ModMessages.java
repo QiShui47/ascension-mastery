@@ -8,6 +8,9 @@ import com.qishui48.ascension.skill.SkillRegistry;
 import com.qishui48.ascension.util.IEntityDataSaver;
 import com.qishui48.ascension.util.PacketUtils;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
@@ -22,6 +25,8 @@ public class ModMessages {
     public static final Identifier SYNC_REQUEST_ID = new Identifier(Ascension.MOD_ID, "request_sync");
     public static final Identifier TOGGLE_REQUEST_ID = new Identifier(Ascension.MOD_ID, "request_toggle_skill");
     public static final Identifier SHOW_NOTIFICATION_ID = new Identifier(Ascension.MOD_ID, "show_notification");
+    public static final Identifier BAMBOO_CUTTING_SYNC_ID = new Identifier(Ascension.MOD_ID, "bamboo_cutting_sync");
+    public static final Identifier RESET_SKILLS_ID = new Identifier(Ascension.MOD_ID, "request_reset_skills");
 
     public static void registerC2SPackets() {
         ServerPlayNetworking.registerGlobalReceiver(UNLOCK_REQUEST_ID, (server, player, handler, buf, responseSender) -> {
@@ -154,6 +159,13 @@ public class ModMessages {
                 if (PacketUtils.isSkillUnlocked(player, skillId)) {
                     PacketUtils.toggleSkill(player, skillId);
                 }
+            });
+        });
+
+        // 删除了原来手写的一大段逻辑，改为直接调用 PacketUtils 的标准方法
+        ServerPlayNetworking.registerGlobalReceiver(RESET_SKILLS_ID, (server, player, handler, buf, responseSender) -> {
+            server.execute(() -> {
+                PacketUtils.resetSkills(player);
             });
         });
     }

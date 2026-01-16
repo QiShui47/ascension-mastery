@@ -26,7 +26,19 @@
 		"CraftingResultSlotMixin",
 		"PlayerAttackMixin",
 		"AnvilScreenHandlerMixin",
-		"LivingEntityAccessor"
+		"LivingEntityAccessor",
+		"EnchantedBookItemMixin",
+		"EnchantmentScreenHandlerMixin",
+		"TradeOutputSlotMixin",
+		"BlockItemMixin",
+		"EnderPearlItemMixin",
+		"ServerReachMixin",
+		"WolfPackMixin",
+		"BambooCuttingMixin",
+		"WolfEntityMixin",
+		"MobEntityDeathMixin",
+		"MagmaCreamMixin",
+		"BastionCheckMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

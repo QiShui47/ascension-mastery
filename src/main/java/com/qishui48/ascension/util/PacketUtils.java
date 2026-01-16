@@ -29,6 +29,8 @@ public class PacketUtils {
         if (nbt.contains("skill_levels")) syncNbt.put("skill_levels", nbt.get("skill_levels"));
         if (nbt.contains("revealed_skills")) syncNbt.put("revealed_skills", nbt.get("revealed_skills"));
         if (nbt.contains("disabled_skills")) syncNbt.put("disabled_skills", nbt.get("disabled_skills"));
+        if (nbt.contains("reset_count")) syncNbt.putInt("reset_count", nbt.getInt("reset_count"));
+        if (nbt.contains("last_reset_time")) syncNbt.putLong("last_reset_time", nbt.getLong("last_reset_time"));
 
         // === 服务端预计算条件状态与进度 ===
         NbtCompound criteriaCache = new NbtCompound();
@@ -234,5 +236,119 @@ public class PacketUtils {
         NbtCompound nbt = dataSaver.getPersistentData();
         int spent = nbt.getInt("spent_skill_points");
         nbt.putInt("spent_skill_points", spent + cost);
+    }
+
+    public static void resetSkills(ServerPlayerEntity player) {
+        IEntityDataSaver dataSaver = (IEntityDataSaver) player;
+        NbtCompound nbt = dataSaver.getPersistentData();
+
+        // === 1. 冷却检查 (10天) ===
+        long lastResetTime = nbt.contains("last_reset_time") ? nbt.getLong("last_reset_time") : 0;
+        long currentTime = player.getWorld().getTime();
+        long cooldownTicks = 240000L; // 10 天
+
+        if (lastResetTime != 0 && (currentTime - lastResetTime) < cooldownTicks) {
+            long daysLeft = (cooldownTicks - (currentTime - lastResetTime)) / 24000L;
+            player.sendMessage(Text.translatable("message.ascension.reset_cooldown", daysLeft + 1).formatted(Formatting.RED), true);
+            return;
+        }
+
+        // === 2. 费用计算 (基础 1395 + 递增) ===
+        int resetCount = nbt.contains("reset_count") ? nbt.getInt("reset_count") : 0;
+        int cost = 1395 * (1 + resetCount);
+
+        // === 3. 经验检查与扣除 ===
+        // 使用 totalExperience 来判断，确保准确
+        if (player.totalExperience < cost) {
+            player.sendMessage(Text.translatable("message.ascension.not_enough_xp", cost).formatted(Formatting.RED), true);
+            return;
+        }
+
+        // 扣除经验 (直接增加负数经验值)
+        player.addExperience(-cost);
+
+        // === 4. 计算返还点数 (核心修复) ===
+        int spent = 0;
+
+        // 优先读取 spent_skill_points (这是最准确的记录)
+        if (nbt.contains("spent_skill_points")) {
+            spent = nbt.getInt("spent_skill_points");
+        }
+        // [保险逻辑] 如果是老存档，可能没有记录 spent_skill_points，此时我们手动计算一下当前技能的总价值
+        else {
+            for (Skill skill : SkillRegistry.getAll()) {
+                int level = getSkillLevel(player, skill.id);
+                for (int i = 1; i <= level; i++) {
+                    spent += skill.getCost(i);
+                }
+            }
+        }
+
+        int currentPoints = nbt.contains("skill_points") ? nbt.getInt("skill_points") : 0;
+
+        // 返还所有点数
+        nbt.putInt("skill_points", currentPoints + spent);
+
+        // [关键步骤] 必须将已花费记录清零！
+        // 否则下次 checkSkillPointBalance 运行时，会误以为你有点数没被返还，再次给你加分。
+        nbt.putInt("spent_skill_points", 0);
+
+        // === 5. 清除技能与状态 ===
+        nbt.remove("skill_levels");
+        // 如果你想让玩家重新探索隐藏技能，可以取消注释下面这行：
+        // nbt.remove("revealed_skills");
+
+        // 移除所有手动停用记录
+        nbt.remove("disabled_skills");
+
+        // === 6. 更新记录 ===
+        nbt.putInt("reset_count", resetCount + 1);
+        nbt.putLong("last_reset_time", currentTime);
+
+        // === 7. 刷新与同步 ===
+        SkillEffectHandler.refreshAttributes(player); // 移除属性加成
+        syncSkillData(player); // 刷新客户端 UI
+
+        player.sendMessage(Text.translatable("message.ascension.reset_success", cost).formatted(Formatting.GREEN), true);
+        player.playSound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.PLAYERS, 1.0f, 1.0f);
+    }
+    /**
+     * 获取存储在玩家身上的通用整型数据
+     * @param player 玩家实体
+     * @param key NBT键名 (例如 "zhu_rong_charges")
+     * @return 存储的整数值，如果没有则返回 0
+     */
+    public static int getData(ServerPlayerEntity player, String key) {
+        NbtCompound nbt = ((IEntityDataSaver) player).getPersistentData();
+        return nbt.getInt(key);
+    }
+
+    /**
+     * 设置存储在玩家身上的通用整型数据，并同步
+     * @param player 玩家实体
+     * @param key NBT键名
+     * @param value 要设置的值
+     */
+    public static void setData(ServerPlayerEntity player, String key, int value) {
+        IEntityDataSaver dataSaver = (IEntityDataSaver) player;
+        NbtCompound nbt = dataSaver.getPersistentData();
+
+        // 如果值为0，我们可以选择移除key以节省空间，或者存0
+        // 这里为了简单直接存值
+        nbt.putInt(key, value);
+
+        // 任何数据变动后，都建议同步一次数据，防止客户端显示不同步
+        // 如果数据仅服务端逻辑使用（如伤害计算），其实可以不立即同步
+        // 但为了保险（比如以后要在UI显示充能层数），我们同步一下
+        syncSkillData(player);
+    }
+    /**
+     * 增加数据值 (快捷方法)
+     * @param player 目标玩家
+     * @param key 数据键名
+     * @param amount 增加量
+     */
+    public static void addData(ServerPlayerEntity player, String key, int amount) {
+        setData(player, key, getData(player, key) + amount);
     }
 }

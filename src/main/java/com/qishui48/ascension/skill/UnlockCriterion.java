@@ -1,5 +1,6 @@
 package com.qishui48.ascension.skill;
 
+import com.qishui48.ascension.util.PacketUtils;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.stat.Stat;
@@ -10,11 +11,21 @@ import net.minecraft.text.Text;
 public class UnlockCriterion {
     private final String translationKey; // 存翻译键，而不是硬编码文本
     private final Stat<?> stat;
+    private final String nbtKey;
     private final int threshold;
     private double displayDivisor = 1.0;
 
     public <T> UnlockCriterion(StatType<T> type, T target, int threshold, String translationKey) {
         this.stat = type.getOrCreateStat(target);
+        this.nbtKey = null; // Stat 模式下 nbtKey 为空
+        this.threshold = threshold;
+        this.translationKey = translationKey;
+    }
+
+    // [新增] 新的构造函数 (用于 NBT 数据)
+    public UnlockCriterion(String nbtKey, int threshold, String translationKey) {
+        this.stat = null; // NBT 模式下 stat 为空
+        this.nbtKey = nbtKey;
         this.threshold = threshold;
         this.translationKey = translationKey;
     }
@@ -26,17 +37,28 @@ public class UnlockCriterion {
     }
 
     public boolean test(PlayerEntity player) {
-        // 仅服务端检查，客户端逻辑由 UI 独立处理或通过网络同步
-        // (为了防止之前的引用报错，这里只保留最安全的检查)
         if (player instanceof ServerPlayerEntity serverPlayer) {
-            return serverPlayer.getStatHandler().getStat(this.stat) >= this.threshold;
+            // [修改] 优先检查 NBT 模式
+            if (this.nbtKey != null) {
+                return PacketUtils.getData(serverPlayer, this.nbtKey) >= this.threshold;
+            }
+            // 否则检查 Stat 模式
+            if (this.stat != null) {
+                return serverPlayer.getStatHandler().getStat(this.stat) >= this.threshold;
+            }
         }
         return false;
     }
 
     public int getProgress(PlayerEntity player) {
         if (player instanceof ServerPlayerEntity serverPlayer) {
-            return serverPlayer.getStatHandler().getStat(this.stat);
+            // [修改] 优先检查 NBT 模式
+            if (this.nbtKey != null) {
+                return PacketUtils.getData(serverPlayer, this.nbtKey);
+            }
+            if (this.stat != null) {
+                return serverPlayer.getStatHandler().getStat(this.stat);
+            }
         }
         return 0;
     }

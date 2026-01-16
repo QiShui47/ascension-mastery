@@ -62,6 +62,14 @@ public class Ascension implements ModInitializer {
 	public static final Identifier KILL_ZOMBIE_AIR = new Identifier(MOD_ID, "kill_zombie_air"); // 空中杀僵尸
 	public static final Identifier SURVIVE_ELYTRA_CRASH = new Identifier(MOD_ID, "survive_elytra_crash"); //坠机生还
 	public static final Identifier ENCHANT_SWORD_THREE_TIMES = new Identifier(MOD_ID, "enchant_sword_three_times"); //强化剑3次
+	public static final Identifier ENCHANT_WITH_LEVEL_30 = new Identifier(MOD_ID, "enchant_with_level_30"); //附30级的魔
+	public static final Identifier TRADE_DIFFERENT_ENCHANTED_BOOKS = new Identifier(MOD_ID, "trade_different_enchanted_books"); //交易不同附魔书
+	public static final Identifier PLACE_BLOCK_COUNT = new Identifier(MOD_ID, "place_block_count"); //放置方块
+	public static final Identifier USE_ENDER_PEARL_COUNT = new Identifier(MOD_ID, "use_ender_pearl_count"); //使用末影珍珠
+	public static final Identifier FIND_MUSHROOM_FIELDS = new Identifier(MOD_ID, "find_mushroom_fields"); //找到蘑菇岛
+	public static final Identifier TAME_DOG_COUNT = new Identifier(MOD_ID, "tame_dog_count"); // 驯服狗狗
+	public static final Identifier DOG_KILL_MOB_COUNT = new Identifier(MOD_ID, "dog_kill_mob_count"); //狗狗出击
+	public static final Identifier EXPLORE_BASTION = new Identifier(MOD_ID, "explore_bastion"); // 探索不同的堡垒遗迹
 
 	@Override
 	public void onInitialize() {
@@ -120,6 +128,14 @@ public class Ascension implements ModInitializer {
 		Registry.register(Registries.CUSTOM_STAT, KILL_ZOMBIE_AIR, KILL_ZOMBIE_AIR);
 		Registry.register(Registries.CUSTOM_STAT, SURVIVE_ELYTRA_CRASH, SURVIVE_ELYTRA_CRASH);
 		Registry.register(Registries.CUSTOM_STAT, ENCHANT_SWORD_THREE_TIMES, ENCHANT_SWORD_THREE_TIMES);
+		Registry.register(Registries.CUSTOM_STAT, ENCHANT_WITH_LEVEL_30, ENCHANT_WITH_LEVEL_30);
+		Registry.register(Registries.CUSTOM_STAT, TRADE_DIFFERENT_ENCHANTED_BOOKS, TRADE_DIFFERENT_ENCHANTED_BOOKS);
+		Registry.register(Registries.CUSTOM_STAT, PLACE_BLOCK_COUNT, PLACE_BLOCK_COUNT);
+		Registry.register(Registries.CUSTOM_STAT, USE_ENDER_PEARL_COUNT, USE_ENDER_PEARL_COUNT);
+		Registry.register(Registries.CUSTOM_STAT, FIND_MUSHROOM_FIELDS, FIND_MUSHROOM_FIELDS);
+		Registry.register(Registries.CUSTOM_STAT, TAME_DOG_COUNT, TAME_DOG_COUNT);
+		Registry.register(Registries.CUSTOM_STAT, DOG_KILL_MOB_COUNT, DOG_KILL_MOB_COUNT);
+		Registry.register(Registries.CUSTOM_STAT, EXPLORE_BASTION, EXPLORE_BASTION);
 		SkillRegistry.registerAll();
 
 		//踏足新维度的事件

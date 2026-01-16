@@ -80,6 +80,8 @@
   "gui.ascension.tooltip.hint.enable": "(中键点击启用)",
   "gui.ascension.tooltip.status.enabled": "[已启用]",
   "gui.ascension.tooltip.hint.disable": "(中键点击停用)",
+  "gui.ascension.reset": "重置技能树",
+  "gui.ascension.reset.tooltip": "重置所有技能\n消耗: 1395 XP (+1395/次)\n冷却: 10 天\n返还所有技能点",
 
   "_comment_command": "--- 指令反馈 ---",
   "command.ascension.set_skills.success": "[Debug] 技能点已设置为: %s",
@@ -99,6 +101,11 @@
   "message.ascension.parent_locked_any": "前置未解锁！你需要至少解锁一个前置技能。",
   "message.ascension.refund_points": "[Ascension] 检测到技能消耗调整，已为您返还 %s 点技能点。",
   "message.ascension.flight_no_space": "头顶空间不足，无法御剑！",
+  "message.ascension.too_hungry_to_start": "你饿得头昏眼花，完全看不进去书...",
+  "message.ascension.too_hungry_to_read": "实在太饿了，不得不放下手中的书...",
+  "message.ascension.reset_cooldown": "技能树重置冷却中。剩余 %s 天",
+  "message.ascension.not_enough_xp": "经验值不足！需要消耗 %s 点经验值",
+  "message.ascension.reset_success": "技能树已重置，技能点已返还！",
 
   "enchantment.ascension.life_steal": "生命汲取",
   "enchantment.ascension.speed_steal": "速度偷取",
@@ -120,6 +127,24 @@
   "skill.ascension.mining": "挖掘技巧",
   "skill.ascension.mining.desc": "这个类别的技能可以提高破坏和创造的效率",
 
+  "skill.ascension.miscellaneous": "奇术",
+  "skill.ascension.miscellaneous.desc": "一些不属于常规生存范畴的神秘技巧",
+
+  "skill.ascension.golden_house": "黄金屋",
+  "skill.ascension.golden_house.desc": "长按右键读附魔书可将饥饿值转化为经验。阅读进度会保留。（给予的经验受附魔效果和等级影响）",
+  "skill.ascension.golden_house.desc.2": "长按右键读附魔书可将饥饿值转化为更多经验。阅读进度会保留。（给予的经验受附魔效果和等级影响）",
+  "skill.ascension.golden_house.desc.3": "长按右键读附魔书可将饥饿值转化为超级多经验。阅读进度会保留。（给予的经验受附魔效果和等级影响）",
+
+  "skill.ascension.telekinesis": "念力",
+  "skill.ascension.telekinesis.desc": "将你的意志实体化。与方块的交互距离增加 1 格。",
+  "skill.ascension.telekinesis.desc.2": "将你的意志实体化。与方块的交互距离增加 2 格。",
+
+  "skill.ascension.zhu_rong": "祝融之力",
+  "skill.ascension.zhu_rong.desc": "允许食用岩浆膏。每吃1个，下次攻击附加2点火焰伤害（可暴击）。最多叠加2层。",
+  "skill.ascension.zhu_rong.desc.2": "最大叠加层数提升至 3层。",
+  "skill.ascension.zhu_rong.desc.3": "最大叠加层数提升至 4层。",
+  "skill.ascension.zhu_rong.desc.4": "最大叠加层数提升至 5层。烈火燎原！",
+
   "skill.ascension.fire_resistance": "火焰抵抗",
   "skill.ascension.fire_resistance.desc": "受到的火焰伤害减半。",
   "skill.ascension.fire_resistance.desc.2": "受到的火焰伤害减半，且身上的火焰熄灭速度翻倍。",
@@ -135,11 +160,22 @@
 
   "skill.ascension.melancholic_personality": "忧郁人格",
   "skill.ascension.melancholic_personality.desc": "雨天/雷暴且处于露天时，缓慢恢复生命和饥饿度。",
-  "skill.ascension.melancholic_personality.desc.2": "雨天露天恢复生命饥饿。若环境改变，获得12秒抗性提升I。",
+  "skill.ascension.melancholic_personality.desc.2": "雨天/雷暴且处于露天时，缓慢恢复生命和饥饿度并获得12秒抗性提升I。",
 
   "skill.ascension.sacrificial_strike": "舍身一击",
   "skill.ascension.sacrificial_strike.desc": "多段跳滞空后的第1击伤害+20%。离地越近伤害越高(最多再+20%)。",
   "skill.ascension.sacrificial_strike.desc.2": "多段跳滞空后的第1击伤害+40%。离地越近伤害越高(最多再+20%)。",
+
+  "skill.ascension.wolf_pack": "狼群领袖",
+  "skill.ascension.wolf_pack.desc": "受伤时有 10% 概率召唤 1-2 只已驯服的狼护驾。伤害越高，概率越高（最高 +30%）。",
+  "skill.ascension.wolf_pack.desc.2": "召唤上限提升至 3 只。",
+  "skill.ascension.wolf_pack.desc.3": "召唤上限提升至 4 只。若背包中有骨头，可消耗骨头必定召唤对应数量的狼！",
+
+  "skill.ascension.bamboo_cutting": "斩竹",
+  "skill.ascension.bamboo_cutting.desc": "如同劈开竹子般顺畅。剑或斧攻击时有 10% 概率立即重置攻击冷却。",
+  "skill.ascension.bamboo_cutting.desc.2": "触发概率提升至 20%。",
+  "skill.ascension.bamboo_cutting.desc.3": "触发概率提升至 27%。",
+  "skill.ascension.bamboo_cutting.desc.4": "触发概率提升至 33%。唯快不破！",
 
   "skill.ascension.health_boost": "生命提升",
   "skill.ascension.health_boost.desc": "你将获得额外的2颗心",
@@ -287,5 +323,18 @@
   "criterion.ascension.ascend_height": "累计上升 %s 米",
   "criterion.ascension.kill_zombie_air": "在空中击杀 %s 只僵尸",
   "criterion.ascension.survive_elytra_crash": "鞘翅撞墙并濒死生还",
-  "criterion.ascension.enchant_sword_three_times": "用铁砧强化同一把剑 3 次"
+  "criterion.ascension.enchant_sword_three_times": "用铁砧强化同一把剑 3 次",
+  "criterion.ascension.enchant_lv30": "进行一次 30 级附魔",
+  "criterion.ascension.trade_4_books": "交易获得 4 本不同的附魔书",
+  "criterion.ascension.place_block_count": "放置 %s 个方块",
+  "criterion.ascension.use_64_pearls": "使用 %s 个末影珍珠",
+  "criterion.ascension.find_mushroom_island": "发现蘑菇岛群系",
+  "criterion.ascension.tame_2_dogs": "驯服 2 只狼",
+  "criterion.ascension.dog_kill_mob": "让你的狼杀死 1 个生物",
+  "criterion.ascension.mine_7_bamboo": "破坏 7 个竹子",
+  "criterion.ascension.mine_27_bamboo": "破坏 27 个竹子",
+  "criterion.ascension.mine_37_bamboo": "破坏 37 个竹子",
+  "criterion.ascension.mine_47_bamboo": "破坏 47 个竹子",
+  "criterion.ascension.harvest_nether_wart": "收获 %s 个地狱疣",
+  "criterion.ascension.explore_bastions": "探索 %s 个不同的堡垒遗迹"
 }

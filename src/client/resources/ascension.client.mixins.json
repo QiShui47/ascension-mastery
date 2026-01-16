@@ -5,7 +5,8 @@
 	"client": [
 		"MovementSkillMixin",
 		"JumpBlockerMixin",
-		"PlayerEntityModelMixin"
+		"PlayerEntityModelMixin",
+		"ClientReachMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

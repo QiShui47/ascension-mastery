@@ -12,6 +12,7 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -47,6 +48,60 @@ public class SkillTreeScreen extends Screen {
 
         // === 1. 每次打开 UI 时，强制请求同步 ===
         ClientPlayNetworking.send(ModMessages.SYNC_REQUEST_ID, PacketByteBufs.create());
+
+        // === 重置按钮逻辑 ===
+        int resetBtnWidth = 50;
+        int resetBtnHeight = 20;
+        int resetBtnX = 10;
+        int resetBtnY = 35;
+
+        // 1. 获取状态
+        boolean canReset = true;
+        List<Text> tooltip = new ArrayList<>();
+        tooltip.add(Text.translatable("gui.ascension.reset.tooltip"));
+
+        if (this.client != null && this.client.player != null) {
+            IEntityDataSaver data = (IEntityDataSaver) this.client.player;
+            NbtCompound nbt = data.getPersistentData();
+
+            // 计算消耗
+            int resetCount = nbt.contains("reset_count") ? nbt.getInt("reset_count") : 0;
+            int cost = 1395 * (1 + resetCount);
+            // 获取玩家当前经验总量 (估算或直接访问 totalExperience)
+            int currentXp = this.client.player.totalExperience;
+
+            // 检查冷却
+            long lastResetTime = nbt.contains("last_reset_time") ? nbt.getLong("last_reset_time") : 0;
+            long currentTime = this.client.world.getTime();
+            long cooldownTicks = 240000L; // 10天
+
+            if (lastResetTime != 0 && (currentTime - lastResetTime) < cooldownTicks) {
+                canReset = false;
+                long daysLeft = (cooldownTicks - (currentTime - lastResetTime)) / 24000L;
+                tooltip.add(Text.translatable("message.ascension.reset_cooldown", daysLeft + 1).formatted(Formatting.RED));
+            } else if (currentXp < cost) {
+                canReset = false;
+                tooltip.add(Text.translatable("message.ascension.not_enough_xp", cost).formatted(Formatting.RED));
+            } else {
+                tooltip.add(Text.translatable("gui.ascension.reset.cost", cost).formatted(Formatting.GRAY));
+            }
+        }
+
+        // 2. 创建按钮
+        var btn = net.minecraft.client.gui.widget.ButtonWidget.builder(
+                        Text.translatable("gui.ascension.reset"),
+                        (button) -> {
+                            ClientPlayNetworking.send(ModMessages.RESET_SKILLS_ID, PacketByteBufs.empty());
+                            this.close();
+                        })
+                .dimensions(resetBtnX, resetBtnY, resetBtnWidth, resetBtnHeight)
+                .tooltip(net.minecraft.client.gui.tooltip.Tooltip.of(Text.empty().append(tooltip.get(0)).append("\n").append(tooltip.size() > 1 ? tooltip.get(1) : Text.empty())))
+                .build();
+
+        // 3. 设置启用状态 (Active = false 会自动变灰)
+        btn.active = canReset;
+
+        this.addDrawableChild(btn);
     }
 
     @Override
@@ -211,6 +266,9 @@ public class SkillTreeScreen extends Screen {
 
         // HUD
         renderHud(context,mouseX,mouseY);
+
+        // 必须调用这行代码！父类会负责绘制所有通过 addDrawableChild 添加的按钮
+        super.render(context, mouseX, mouseY, delta);
     }
 
     // 辅助方法：绘制连线
@@ -476,6 +534,13 @@ public class SkillTreeScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        // === 1. 最优先：让 Minecraft 原生 UI 组件（如你在 init 中添加的重置按钮）处理点击 ===
+        // 如果按钮处理了点击，它会返回 true，我们直接返回，不再进行后续逻辑
+        if (super.mouseClicked(mouseX, mouseY, button)) {
+            return true;
+        }
+
+        // === 2. 其次：处理技能树内的图标交互 ===
         int centerX = this.width / 2;
         int centerY = this.height / 2;
         double localMouseX = (mouseX - centerX) / scale + centerX;
@@ -489,6 +554,7 @@ public class SkillTreeScreen extends Screen {
             int drawX = (int)(centerX + skill.x + scrollX);
             int drawY = (int)(centerY + skill.y + scrollY);
 
+            // 检测点击是否在技能图标范围内
             if (localMouseX >= drawX && localMouseX <= drawX + 16 &&
                     localMouseY >= drawY && localMouseY <= drawY + 16) {
 
@@ -501,23 +567,29 @@ public class SkillTreeScreen extends Screen {
                     PacketByteBuf buf = PacketByteBufs.create();
                     buf.writeString(skill.id);
                     ClientPlayNetworking.send(ModMessages.UNLOCK_REQUEST_ID, buf);
-                    return true;
+                    return true; // 消耗事件
                 }
 
-                // === [新增] 中键 (2): 切换启用状态 ===
+                // 中键 (2): 切换启用状态
                 if (button == 2) {
                     PacketByteBuf buf = PacketByteBufs.create();
                     buf.writeString(skill.id);
                     ClientPlayNetworking.send(ModMessages.TOGGLE_REQUEST_ID, buf);
-                    return true;
+                    return true; // 消耗事件
                 }
             }
         }
+
+        // === 3. 最后：如果没有点中按钮，也没点中技能，且是左键，则视为拖拽地图 ===
         if (button == 0) {
             this.isDragging = true;
             return true;
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+
+        // 移除了原本底部的“手动按钮检测代码”，因为你已经在 init() 里使用了 ButtonWidget，
+        // 那段代码是多余的，而且检测位置（右下角）也和你现在的按钮位置（左上角）不符。
+
+        return false;
     }
 
     @Override
