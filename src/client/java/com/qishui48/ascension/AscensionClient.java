@@ -1,5 +1,6 @@
 package com.qishui48.ascension;
 
+import com.qishui48.ascension.client.ActiveSkillHud;
 import com.qishui48.ascension.client.NotificationHud;
 import com.qishui48.ascension.mixin.mechanics.LivingEntityAccessor;
 import com.qishui48.ascension.network.ModMessages;
@@ -10,18 +11,29 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.network.PacketByteBuf;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRegistrationCallback;
 import net.minecraft.client.render.entity.PlayerEntityRenderer;
 import com.qishui48.ascension.client.render.SwordFlightFeatureRenderer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
 public class AscensionClient implements ClientModInitializer {
 
 	public static KeyBinding openGuiKey;
+	public static KeyBinding altKey; // 组合热键
+	public static KeyBinding castPrimaryKey;   // 主动技能主要效果
+	public static KeyBinding castSecondaryKey; // 主动技能次要效果
+
+	// 防止连点
+	private boolean wasAltPressed = false;
+	private boolean wasAttackPressed = false;
+	private boolean wasUsePressed = false;
 
 	@Override
 	public void onInitializeClient() {
@@ -31,9 +43,32 @@ public class AscensionClient implements ClientModInitializer {
 				GLFW.GLFW_KEY_K,
 				"category.ascension.general"
 		));
+		// 注册 Alt 组合键 (默认左 Alt)
+		altKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+				"key.ascension.combo_alt",
+				InputUtil.Type.KEYSYM,
+				GLFW.GLFW_KEY_LEFT_ALT,
+				"category.ascension.general"
+		));
+		// 注册新热键 (默认为 GLFW_KEY_UNKNOWN 即未绑定)
+		castPrimaryKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+				"key.ascension.cast_primary",
+				InputUtil.Type.KEYSYM,
+				GLFW.GLFW_KEY_UNKNOWN,
+				"category.ascension.general"
+		));
+		castSecondaryKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+				"key.ascension.cast_secondary",
+				InputUtil.Type.KEYSYM,
+				GLFW.GLFW_KEY_UNKNOWN,
+				"category.ascension.general"
+		));
 
 		// 1. 注册 HUD 渲染
 		HudRenderCallback.EVENT.register(new NotificationHud());
+		HudRenderCallback.EVENT.register(new ActiveSkillHud()); // 注册技能槽 HUD
+
+		/*
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			NotificationHud.tick();
 			while (openGuiKey.wasPressed()) {
@@ -41,7 +76,7 @@ public class AscensionClient implements ClientModInitializer {
 					client.setScreen(new SkillTreeScreen());
 				}
 			}
-		});
+		});*/
 
 		LivingEntityFeatureRendererRegistrationCallback.EVENT.register((entityType, entityRenderer, registrationHelper, context) -> {
 			if (entityRenderer instanceof PlayerEntityRenderer) {
@@ -49,6 +84,77 @@ public class AscensionClient implements ClientModInitializer {
 						(PlayerEntityRenderer) entityRenderer,
 						net.minecraft.client.MinecraftClient.getInstance().getItemRenderer()
 				));
+			}
+		});
+
+		// 4. Client Tick (处理输入)
+		ClientTickEvents.END_CLIENT_TICK.register(client -> {
+			NotificationHud.tick();
+
+			if (client.player == null) return;
+
+			// 打开 UI
+			while (openGuiKey.wasPressed()) {
+				if (client.currentScreen == null) {
+					client.setScreen(new SkillTreeScreen());
+				}
+			}
+
+			// === ALT 组合键逻辑 ===
+			if (altKey.isPressed()) {
+				// A. 切换槽位 (Alt + 1~5)
+				// 这里检测原版快捷键绑定
+				for (int i = 0; i < 5; i++) {
+					if (client.options.hotbarKeys[i].wasPressed()) {
+						PacketByteBuf buf = PacketByteBufs.create();
+						buf.writeInt(i);
+						ClientPlayNetworking.send(ModMessages.SWITCH_SLOT_ID, buf);
+						// 为了防止切换原版物品栏，可能需要额外逻辑，但 Fabric API 较难完美拦截。
+						// 简单的做法是：玩家需接受 Alt+1 也会切物品栏。
+						// 或者可以在这里设置 client.player.getInventory().selectedSlot = previous; (会抖动)
+					}
+				}
+
+				// B. 释放技能 (Alt + 左键/右键)
+				// 左键 (Primary)
+				if (client.options.attackKey.isPressed()) {
+					if (!wasAttackPressed) {
+						PacketByteBuf buf = PacketByteBufs.create();
+						buf.writeBoolean(false); // isSecondary = false
+						ClientPlayNetworking.send(ModMessages.USE_ACTIVE_SKILL_ID, buf);
+						wasAttackPressed = true;
+
+						// 可以在这里取消原版攻击挖掘: client.options.attackKey.setPressed(false);
+					}
+				} else {
+					wasAttackPressed = false;
+				}
+
+				// 右键 (Secondary)
+				if (client.options.useKey.isPressed()) {
+					if (!wasUsePressed) {
+						PacketByteBuf buf = PacketByteBufs.create();
+						buf.writeBoolean(true); // isSecondary = true
+						ClientPlayNetworking.send(ModMessages.USE_ACTIVE_SKILL_ID, buf);
+						wasUsePressed = true;
+					}
+				} else {
+					wasUsePressed = false;
+				}
+			}
+			// 独立热键逻辑 //
+			// 主要效果
+			while (castPrimaryKey.wasPressed()) {
+				PacketByteBuf buf = PacketByteBufs.create();
+				buf.writeBoolean(false); // isSecondary = false
+				ClientPlayNetworking.send(ModMessages.USE_ACTIVE_SKILL_ID, buf);
+			}
+
+			// 次要效果
+			while (castSecondaryKey.wasPressed()) {
+				PacketByteBuf buf = PacketByteBufs.create();
+				buf.writeBoolean(true); // isSecondary = true
+				ClientPlayNetworking.send(ModMessages.USE_ACTIVE_SKILL_ID, buf);
 			}
 		});
 
@@ -92,6 +198,17 @@ public class AscensionClient implements ClientModInitializer {
 
 					if (localNbt.contains("unlocked_skills")) {
 						localNbt.remove("unlocked_skills");
+					}
+
+					// === 接收主动技能与材料数据 ===
+					if (incomingNbt.contains("active_skill_slots")) {
+						localNbt.put("active_skill_slots", incomingNbt.getList("active_skill_slots", 10)); // 10=Compound
+					}
+					if (incomingNbt.contains("casting_materials")) {
+						localNbt.put("casting_materials", incomingNbt.getList("casting_materials", 10));
+					}
+					if (incomingNbt.contains("selected_active_slot")) {
+						localNbt.putInt("selected_active_slot", incomingNbt.getInt("selected_active_slot"));
 					}
 				}
 			});

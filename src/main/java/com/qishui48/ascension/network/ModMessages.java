@@ -1,14 +1,14 @@
 package com.qishui48.ascension.network;
 
 import com.qishui48.ascension.Ascension;
-import com.qishui48.ascension.skill.Skill;
-import com.qishui48.ascension.skill.SkillActionHandler;
-import com.qishui48.ascension.skill.SkillEffectHandler;
-import com.qishui48.ascension.skill.SkillRegistry;
+import com.qishui48.ascension.skill.*;
 import com.qishui48.ascension.util.IEntityDataSaver;
 import com.qishui48.ascension.util.PacketUtils;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.NbtList;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
@@ -27,6 +27,12 @@ public class ModMessages {
     public static final Identifier SHOW_NOTIFICATION_ID = new Identifier(Ascension.MOD_ID, "show_notification");
     public static final Identifier BAMBOO_CUTTING_SYNC_ID = new Identifier(Ascension.MOD_ID, "bamboo_cutting_sync");
     public static final Identifier RESET_SKILLS_ID = new Identifier(Ascension.MOD_ID, "request_reset_skills");
+    public static final Identifier EQUIP_REQUEST_ID = new Identifier(Ascension.MOD_ID, "request_equip_skill");
+    public static final Identifier SWITCH_SLOT_ID = new Identifier(Ascension.MOD_ID, "request_switch_slot");
+    public static final Identifier USE_ACTIVE_SKILL_ID = new Identifier(Ascension.MOD_ID, "request_use_active_skill");
+    public static final Identifier MATERIAL_SLOT_CLICK_ID = new Identifier(Ascension.MOD_ID, "click_material_slot");
+    public static final Identifier UNEQUIP_REQUEST_ID = new Identifier(Ascension.MOD_ID, "request_unequip_skill");
+    public static final Identifier REDUCE_CD_REQUEST_ID = new Identifier(Ascension.MOD_ID, "request_reduce_cd");
 
     public static void registerC2SPackets() {
         ServerPlayNetworking.registerGlobalReceiver(UNLOCK_REQUEST_ID, (server, player, handler, buf, responseSender) -> {
@@ -166,6 +172,325 @@ public class ModMessages {
         ServerPlayNetworking.registerGlobalReceiver(RESET_SKILLS_ID, (server, player, handler, buf, responseSender) -> {
             server.execute(() -> {
                 PacketUtils.resetSkills(player);
+            });
+        });
+
+        // 1. 装备技能 (Drag & Drop)
+        ServerPlayNetworking.registerGlobalReceiver(EQUIP_REQUEST_ID, (server, player, handler, buf, responseSender) -> {
+            String skillId = buf.readString();
+            int slotIndex = buf.readInt();
+
+            server.execute(() -> {
+                if (!PacketUtils.isSkillUnlocked(player, skillId)) return;
+
+                IEntityDataSaver data = (IEntityDataSaver) player;
+                NbtCompound nbt = data.getPersistentData();
+                NbtList activeSlots = nbt.getList("active_skill_slots", NbtElement.COMPOUND_TYPE);
+
+                // 查重
+                for (int i = 0; i < activeSlots.size(); i++) {
+                    // 如果这个技能已经在别的槽位里了
+                    if (activeSlots.getCompound(i).getString("id").equals(skillId)) {
+                        // 方案 A: 互换 (高级) -> 这里为了简单，直接拒绝并提示
+                        // 方案 B: 拒绝
+                        if (i != slotIndex) { // 如果不是拖到自己身上
+                            player.sendMessage(Text.translatable("message.ascension.skill_already_equipped").formatted(Formatting.RED), true);
+                            return;
+                        }
+                    }
+                }
+
+                // 填充空槽位
+                while (activeSlots.size() <= slotIndex) {
+                    NbtCompound empty = new NbtCompound();
+                    empty.putString("id", "");
+                    empty.putInt("cooldown", 0);
+                    activeSlots.add(empty);
+                }
+
+                NbtCompound slotNbt = activeSlots.getCompound(slotIndex);
+                String oldSkillId = slotNbt.getString("id");
+
+                // 如果当前槽位里的技能正在冷却，则禁止替换
+                // 只有冷却结束 (<=0) 或者槽位本来是空的，才允许换
+                if (slotNbt.getInt("cooldown") > 0 && !slotNbt.getString("id").isEmpty()) {
+                    player.sendMessage(Text.translatable("message.ascension.slot_cooldown_active").formatted(Formatting.RED), true);
+                    return;
+                }
+
+                // === 如果槽位里原本有技能，检查旧技能是否充能满 ===
+                if (!oldSkillId.isEmpty()) {
+                    int charges = slotNbt.getInt("charges");
+                    int level = PacketUtils.getSkillLevel(player, oldSkillId);
+                    Skill oldSkill = SkillRegistry.get(oldSkillId);
+
+                    if (oldSkill instanceof ActiveSkill activeOldSkill) {
+                        int maxCharges = activeOldSkill.getMaxCharges(level);
+                        if (charges < maxCharges) {
+                            player.sendMessage(Text.translatable("message.ascension.skill_not_recharged").formatted(Formatting.RED), true);
+                            return;
+                        }
+                    }
+                }
+
+                slotNbt.putString("id", skillId);
+                slotNbt.putLong("cooldown_end", 0);
+                slotNbt.putInt("cooldown_total", 0);
+
+                // === 初始化充能 ===
+                Skill skill = SkillRegistry.get(skillId);
+                if (skill instanceof ActiveSkill activeSkill) {
+                    // 获取当前等级的最大充能
+                    int level = PacketUtils.getSkillLevel(player, skillId);
+                    int maxCharges = activeSkill.getMaxCharges(level);
+                    slotNbt.putInt("charges", maxCharges);
+                } else {
+                    slotNbt.putInt("charges", 1);
+                }
+
+                nbt.put("active_skill_slots", activeSlots);
+                PacketUtils.syncSkillData(player);
+            });
+        });
+
+        // 2. 切换槽位
+        ServerPlayNetworking.registerGlobalReceiver(SWITCH_SLOT_ID, (server, player, handler, buf, responseSender) -> {
+            int slotIndex = buf.readInt();
+            server.execute(() -> {
+                if (slotIndex >= 0 && slotIndex < 5) {
+                    PacketUtils.setData(player, "selected_active_slot", slotIndex);
+                }
+            });
+        });
+
+        // 3. 使用技能 (多态调用)
+        ServerPlayNetworking.registerGlobalReceiver(USE_ACTIVE_SKILL_ID, (server, player, handler, buf, responseSender) -> {
+            boolean isSecondary = buf.readBoolean();
+
+            server.execute(() -> {
+                IEntityDataSaver data = (IEntityDataSaver) player;
+                NbtCompound nbt = data.getPersistentData();
+                int selectedSlot = nbt.getInt("selected_active_slot");
+                NbtList activeSlots = nbt.getList("active_skill_slots", 10);
+
+                if (selectedSlot >= activeSlots.size()) return;
+                NbtCompound slotNbt = activeSlots.getCompound(selectedSlot);
+                String skillId = slotNbt.getString("id");
+
+                long currentTime = player.getWorld().getTime();
+                long cooldownEnd = slotNbt.getLong("cooldown_end");
+
+                // === [新增] 懒加载恢复逻辑：如果冷却已结束且充能为0，补满充能 ===
+                int currentCharges = slotNbt.getInt("charges");
+                Skill rawSkill = SkillRegistry.get(skillId);
+                if (!(rawSkill instanceof ActiveSkill)) return;
+                ActiveSkill activeSkill = (ActiveSkill) rawSkill;
+                int level = PacketUtils.getSkillLevel(player, skillId);
+                int maxCharges = activeSkill.getMaxCharges(level);
+
+                if (currentTime >= cooldownEnd && currentCharges == 0) {
+                    currentCharges = maxCharges;
+                    // 这里不急着写回NBT，下面操作完一起写
+                }
+
+                // 冷却检查 (如果有充能，视为无冷却)
+                if (currentCharges <= 0) {
+                    // 确实在冷却中，且没充能了
+                    return;
+                }
+
+                // 尝试执行技能
+                boolean success = activeSkill.cast(player, isSecondary);
+
+                if (success) {
+                    // 只有成功了才扣除充能
+                    currentCharges--;
+                    slotNbt.putInt("charges", currentCharges);
+
+                    // 触发冷却计时逻辑 (保持不变)
+                    long now = player.getWorld().getTime();
+                    if (slotNbt.getLong("cooldown_end") <= now) {
+                        int cd = activeSkill.getCooldown(level);
+                        slotNbt.putLong("cooldown_end", now + cd);
+                        slotNbt.putInt("cooldown_total", cd);
+                    }
+
+                    nbt.put("active_skill_slots", activeSlots);
+                    PacketUtils.syncSkillData(player);
+                }
+
+                nbt.put("active_skill_slots", activeSlots);
+                PacketUtils.syncSkillData(player);
+            });
+        });
+
+        // 处理材料槽点击
+        ServerPlayNetworking.registerGlobalReceiver(MATERIAL_SLOT_CLICK_ID, (server, player, handler, buf, responseSender) -> {
+            int slotIndex = buf.readInt();
+            server.execute(() -> {
+                IEntityDataSaver data = (IEntityDataSaver) player;
+                NbtCompound nbt = data.getPersistentData();
+                NbtList materials = nbt.getList("casting_materials", 10); // 10 = Compound
+
+                // 确保列表大小
+                while (materials.size() <= slotIndex) {
+                    materials.add(new NbtCompound());
+                }
+
+                ItemStack cursorStack = player.currentScreenHandler.getCursorStack();
+                ItemStack slotStack = ItemStack.fromNbt(materials.getCompound(slotIndex));
+
+                // 逻辑：
+                // 1. 鼠标拿着东西 -> 放入 (如果是空的) 或 交换
+                // 2. 鼠标没拿东西 -> 取出
+
+                if (!cursorStack.isEmpty()) {
+                    // 放入 / 交换
+                    if (slotStack.isEmpty()) {
+                        // 放入
+                        NbtCompound newSlotNbt = new NbtCompound();
+                        cursorStack.writeNbt(newSlotNbt);
+                        materials.set(slotIndex, newSlotNbt);
+                        player.currentScreenHandler.setCursorStack(ItemStack.EMPTY);
+                    } else {
+                        // 交换
+                        // 简单处理：如果是同种物品，尝试堆叠；否则交换
+                        if (ItemStack.canCombine(cursorStack, slotStack)) {
+                            // 堆叠逻辑 (省略，简单起见直接交换或者满了就不动)
+                            // 这里写简单交换：
+                            NbtCompound newSlotNbt = new NbtCompound();
+                            cursorStack.writeNbt(newSlotNbt);
+                            materials.set(slotIndex, newSlotNbt);
+                            player.currentScreenHandler.setCursorStack(slotStack);
+                        } else {
+                            // 交换
+                            NbtCompound newSlotNbt = new NbtCompound();
+                            cursorStack.writeNbt(newSlotNbt);
+                            materials.set(slotIndex, newSlotNbt);
+                            player.currentScreenHandler.setCursorStack(slotStack);
+                        }
+                    }
+                } else {
+                    // 取出
+                    if (!slotStack.isEmpty()) {
+                        player.currentScreenHandler.setCursorStack(slotStack);
+                        materials.set(slotIndex, new NbtCompound()); // 清空槽位
+                    }
+                }
+
+                nbt.put("casting_materials", materials);
+                PacketUtils.syncSkillData(player);
+                // 这会告诉客户端“现在光标上确实有这个物品”，防止客户端因为预测失败而丢弃物品
+                player.currentScreenHandler.syncState();
+            });
+        });
+
+        // 处理卸载技能
+        ServerPlayNetworking.registerGlobalReceiver(UNEQUIP_REQUEST_ID, (server, player, handler, buf, responseSender) -> {
+            int slotIndex = buf.readInt();
+            server.execute(() -> {
+                IEntityDataSaver data = (IEntityDataSaver) player;
+                NbtCompound nbt = data.getPersistentData();
+                NbtList activeSlots = nbt.getList("active_skill_slots", 10);
+
+                if (slotIndex >= 0 && slotIndex < activeSlots.size()) {
+                    NbtCompound slotNbt = activeSlots.getCompound(slotIndex);
+                    String skillId = slotNbt.getString("id");
+
+                    if (!skillId.isEmpty()) {
+                        // === [新增] 检查充能是否满 ===
+                        int charges = slotNbt.getInt("charges");
+                        int level = PacketUtils.getSkillLevel(player, skillId);
+                        Skill skill = SkillRegistry.get(skillId);
+
+                        if (skill instanceof ActiveSkill activeSkill) {
+                            int maxCharges = activeSkill.getMaxCharges(level);
+                            // 如果充能不满，拒绝卸载
+                            if (charges < maxCharges) {
+                                player.sendMessage(Text.translatable("message.ascension.skill_not_recharged").formatted(Formatting.RED), true);
+                                return;
+                            }
+                        }
+                    }
+
+                    // 允许卸载
+                    activeSlots.set(slotIndex, new NbtCompound());
+                    nbt.put("active_skill_slots", activeSlots);
+                    PacketUtils.syncSkillData(player);
+                }
+            });
+        });
+
+        // 中键减冷却
+        ServerPlayNetworking.registerGlobalReceiver(REDUCE_CD_REQUEST_ID, (server, player, handler, buf, responseSender) -> {
+            int slotIndex = buf.readInt();
+            server.execute(() -> {
+                // 获取材料
+                IEntityDataSaver data = (IEntityDataSaver) player;
+                NbtCompound nbt = data.getPersistentData();
+                NbtList materials = nbt.getList("casting_materials", 10);
+                NbtList activeSlots = nbt.getList("active_skill_slots", 10);
+                long now = player.getWorld().getTime();
+
+                if (slotIndex >= materials.size()) return;
+
+                ItemStack stack = ItemStack.fromNbt(materials.getCompound(slotIndex));
+
+                // === [新增] 检查是否有技能需要冷却 ===
+                boolean needsCooldown = false;
+                for (int i = 0; i < activeSlots.size(); i++) {
+                    net.minecraft.nbt.NbtCompound s = activeSlots.getCompound(i);
+                    if (s.getLong("cooldown_end") > now && s.getInt("cooldown_total") > 0) {
+                        needsCooldown = true;
+                        break;
+                    }
+                }
+
+                if (!needsCooldown) {
+                    player.sendMessage(Text.translatable("message.ascension.cooldown_full").formatted(Formatting.YELLOW), true);
+                    return; // 不消耗材料
+                }
+
+                // TODO: 在这里判断材料类型是否为“高级材料”
+                // 例如: if (!stack.isOf(Items.NETHER_STAR)) return;
+                if (stack.isEmpty()) return;
+
+                // 消耗 1 个
+                stack.decrement(1);
+                if (stack.isEmpty()) {
+                    materials.set(slotIndex, new NbtCompound());
+                } else {
+                    NbtCompound newNbt = new NbtCompound();
+                    stack.writeNbt(newNbt);
+                    materials.set(slotIndex, newNbt);
+                }
+
+                // === 减少所有技能 25% 冷却 ===
+                for (int i = 0; i < activeSlots.size(); i++) {
+                    NbtCompound slotNbt = activeSlots.getCompound(i);
+                    long end = slotNbt.getLong("cooldown_end");
+                    int total = slotNbt.getInt("cooldown_total");
+
+                    if (end > now && total > 0) {
+                        // [修改] 计算减少量：总时间的 25%
+                        long reduced = (long)(total * 0.25);
+                        long newEnd = end - reduced;
+
+                        // 防止减过头 (不能小于当前时间)
+                        if (newEnd < now) newEnd = now;
+
+                        slotNbt.putLong("cooldown_end", newEnd);
+                        // 注意：cooldown_total 保持不变，这样进度条会突然跳跃，符合“加速”的视觉效果
+                    }
+                }
+
+                nbt.put("casting_materials", materials);
+                nbt.put("active_skill_slots", activeSlots);
+                PacketUtils.syncSkillData(player);
+                player.currentScreenHandler.syncState();
+
+                // 反馈
+                player.sendMessage(Text.translatable("message.ascension.cooldown_reduced").formatted(Formatting.AQUA), true);
             });
         });
     }

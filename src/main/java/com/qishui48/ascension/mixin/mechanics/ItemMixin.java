@@ -1,80 +1,85 @@
 package com.qishui48.ascension.mixin.mechanics;
 
+import com.qishui48.ascension.util.PacketUtils;
 import net.minecraft.block.AbstractGlassBlock;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.*;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.sound.SoundEvents;
+import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.TypedActionResult;
 import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-
-// [修复] 将目标改为 Item.class，这样才能覆盖 SwordItem
 @Mixin(Item.class)
-public class ItemMixin implements Equipment {
-
-    @Override
-    public EquipmentSlot getSlotType() {
-        // 1. 御剑飞行：如果是剑，允许装备在脚部
-        if ((Object) this instanceof SwordItem) {
-            return EquipmentSlot.FEET;
-        }
-
-        // 2. 缸中之脑：如果是方块物品，且是玻璃，允许装备在头部
-        // [关键] 必须先判断是否为 BlockItem，否则剑走到这里会报错
-        if ((Object) this instanceof BlockItem blockItem) {
-            if (blockItem.getBlock() instanceof AbstractGlassBlock) {
-                return EquipmentSlot.HEAD;
-            }
-        }
-
-        // 默认逻辑
-        return EquipmentSlot.MAINHAND;
-    }
-
-    @Override
-    public SoundEvent getEquipSound() {
-        // 剑的装备音效
-        if ((Object) this instanceof SwordItem) {
-            return SoundEvents.ENTITY_PLAYER_ATTACK_SWEEP;
-        }
-        // 玻璃的装备音效
-        if ((Object) this instanceof BlockItem blockItem) {
-            if (blockItem.getBlock() instanceof AbstractGlassBlock) {
-                return SoundEvents.BLOCK_GLASS_PLACE;
-            }
+public abstract class ItemMixin {
+    @Unique
+    public SoundEvent getAscensionEquipSound(Item item) {
+        if (item instanceof SwordItem) return SoundEvents.ENTITY_PLAYER_ATTACK_SWEEP;
+        if (item instanceof BlockItem blockItem && blockItem.getBlock() instanceof AbstractGlassBlock) {
+            return SoundEvents.BLOCK_GLASS_PLACE;
         }
         return SoundEvents.ITEM_ARMOR_EQUIP_GENERIC;
     }
 
-    // 右键快速装备逻辑
-    // 允许玩家手持剑右键直接装备到脚上 (仅当脚上没东西时)
+    // Use 方法负责“特权装备”
     @Inject(method = "use", at = @At("HEAD"), cancellable = true)
     private void use(World world, PlayerEntity user, Hand hand, CallbackInfoReturnable<TypedActionResult<ItemStack>> cir) {
         ItemStack stack = user.getStackInHand(hand);
-        // 检测：如果是剑
+
+        // === 1. 御剑飞行 ===
         if (stack.getItem() instanceof SwordItem) {
-            EquipmentSlot slot = EquipmentSlot.FEET;
-            ItemStack equippedStack = user.getEquippedStack(slot);
-            // 检测：靴子槽必须为空 (防止误操作把好装备顶掉了)
-            if (equippedStack.isEmpty()) {
-                // 执行装备逻辑
-                ItemStack copy = stack.copy();
-                copy.setCount(1); // 只装备一把
-                user.equipStack(slot, copy);
-                // 扣除手上的物品 (生存模式)
-                if (!user.getAbilities().creativeMode) {
-                    stack.decrement(1);
+            // 只有服务端才检查技能并执行装备
+            if (!world.isClient && user instanceof ServerPlayerEntity serverPlayer) {
+                // A. 没技能 -> 啥也不做，返回让原版逻辑处理（原版剑右键无事发生）
+                if (!PacketUtils.isSkillActive(serverPlayer, "sword_flight")) {
+                    return;
                 }
-                // 播放音效 (调用上面定义的 getEquipSound)
-                user.playSound(this.getEquipSound(), 1.0F, 1.0F);
-                // 返回成功 (阻止后续逻辑，比如剑的格挡或挥舞)
-                cir.setReturnValue(TypedActionResult.success(stack, world.isClient()));
+
+                // B. 有技能 -> 强制装备
+                EquipmentSlot slot = EquipmentSlot.FEET;
+                ItemStack equippedStack = user.getEquippedStack(slot);
+                if (equippedStack.isEmpty()) {
+                    ItemStack copy = stack.copy();
+                    copy.setCount(1);
+                    // 强制装备（绕过 UI 限制）
+                    user.equipStack(slot, copy);
+                    if (!user.getAbilities().creativeMode) stack.decrement(1);
+
+                    // 播放音效
+                    user.playSound(this.getAscensionEquipSound(stack.getItem()), 1.0F, 1.0F);
+
+                    // 标记成功
+                    cir.setReturnValue(TypedActionResult.success(stack, world.isClient()));
+                }
+            } else if (world.isClient) {
+                // 客户端预判：为了手感，最好也检查一下（如果有同步 NBT）
+                // 简单起见，允许客户端先尝试发起包，由服务端裁决
+            }
+        }
+
+        // === 2. 缸中之脑 ===
+        if (stack.getItem() instanceof BlockItem blockItem && blockItem.getBlock() instanceof AbstractGlassBlock) {
+            if (!world.isClient && user instanceof ServerPlayerEntity serverPlayer) {
+                if (!PacketUtils.isSkillActive(serverPlayer, "brain_in_a_jar")) {
+                    return; // 没技能 -> 执行原版逻辑（放置方块）
+                }
+
+                EquipmentSlot slot = EquipmentSlot.HEAD;
+                if (user.getEquippedStack(slot).isEmpty()) {
+                    ItemStack copy = stack.copy();
+                    copy.setCount(1);
+                    user.equipStack(slot, copy);
+                    if (!user.getAbilities().creativeMode) stack.decrement(1);
+                    user.playSound(this.getAscensionEquipSound(stack.getItem()), 1.0F, 1.0F);
+                    cir.setReturnValue(TypedActionResult.success(stack, world.isClient()));
+                }
             }
         }
     }

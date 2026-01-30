@@ -1,6 +1,9 @@
 {
   "category.ascension.general": "飞升 - 模组",
   "key.ascension.open_gui": "打开技能树",
+  "key.ascension.combo_alt": "技能组合键",
+  "key.ascension.cast_primary": "释放主动技能",
+  "key.ascension.cast_secondary": "释放主动技能的次要效果",
   "dimension.minecraft.overworld": "主世界",
   "dimension.minecraft.the_nether": "地狱",
   "dimension.minecraft.the_end": "终末之地",
@@ -54,6 +57,8 @@
   "gui.ascension.controls_hint": "左键拖动，滚轮缩放，中键切换技能",
   "gui.ascension.help_tip": "技能点获取指南",
   "gui.ascension.tooltip.criterion_progress": "%s- %s (%s/%s)",
+  "gui.ascension.active_slots": "主动技能槽",
+  "gui.ascension.material_slot": "施法材料槽 %s",
   "tooltip.ascension.help.collect": "收集新物品 (+1~4)",
   "tooltip.ascension.help.food": "品尝新食物 (+2)",
   "tooltip.ascension.help.explore": "发现新群系 (+2) / 新维度 (+20)",
@@ -83,6 +88,12 @@
   "gui.ascension.reset": "重置技能树",
   "gui.ascension.reset.tooltip": "重置所有技能\n消耗: 1395 XP (+1395/次)\n冷却: 10 天\n返还所有技能点",
 
+  "gui.ascension.help.active_skill.title": "主动技能操作指南",
+  "gui.ascension.help.active_skill.drag": "拖拽图标至下方技能槽以装备",
+  "gui.ascension.help.active_skill.keys": "选择槽位：Alt + 数字键/滚轮\n主要效果：Alt + 左键\n次要效果：Alt + 右键",
+  "gui.ascension.material_help.priority": "优先级：从上到下",
+  "gui.ascension.material_help.reduce_cd": "右键点击：消耗材料减少 25% 冷却",
+
   "_comment_command": "--- 指令反馈 ---",
   "command.ascension.set_skills.success": "[Debug] 技能点已设置为: %s",
   "command.ascension.condition.grant": "已达成解锁条件",
@@ -106,6 +117,14 @@
   "message.ascension.reset_cooldown": "技能树重置冷却中。剩余 %s 天",
   "message.ascension.not_enough_xp": "经验值不足！需要消耗 %s 点经验值",
   "message.ascension.reset_success": "技能树已重置，技能点已返还！",
+  "message.ascension.slot_cooldown_active": "无法更换：该技能正在冷却中！",
+  "message.ascension.no_material": "施法材料不足！",
+  "message.ascension.skill_already_equipped": "该技能已装备！",
+  "message.ascension.skill_not_recharged": "技能充能未满，无法卸载！",
+  "message.ascension.cooldown_reduced": "加快了冷却进程",
+  "message.ascension.blink_fail": "无法在附近找到安全的传送点！",
+  "message.ascension.slot_locked": "该技能槽尚未解锁！请升级“融会贯通”技能。",
+  "message.ascension.cooldown_full": "所有技能均已准备就绪，无需加速。",
 
   "enchantment.ascension.life_steal": "生命汲取",
   "enchantment.ascension.speed_steal": "速度偷取",
@@ -131,9 +150,9 @@
   "skill.ascension.miscellaneous.desc": "一些不属于常规生存范畴的神秘技巧",
 
   "skill.ascension.golden_house": "黄金屋",
-  "skill.ascension.golden_house.desc": "长按右键读附魔书可将饥饿值转化为经验。阅读进度会保留。（给予的经验受附魔效果和等级影响）",
-  "skill.ascension.golden_house.desc.2": "长按右键读附魔书可将饥饿值转化为更多经验。阅读进度会保留。（给予的经验受附魔效果和等级影响）",
-  "skill.ascension.golden_house.desc.3": "长按右键读附魔书可将饥饿值转化为超级多经验。阅读进度会保留。（给予的经验受附魔效果和等级影响）",
+  "skill.ascension.golden_house.desc": "长按右键读附魔书可将饥饿值转化为经验。\n阅读进度会保留。（给予的经验受附魔效果和等级影响）",
+  "skill.ascension.golden_house.desc.2": "长按右键读附魔书可将饥饿值转化为更多经验。\n阅读进度会保留。（给予的经验受附魔效果和等级影响）",
+  "skill.ascension.golden_house.desc.3": "长按右键读附魔书可将饥饿值转化为超级多经验。\n阅读进度会保留。（给予的经验受附魔效果和等级影响）",
 
   "skill.ascension.telekinesis": "念力",
   "skill.ascension.telekinesis.desc": "将你的意志实体化。与方块的交互距离增加 1 格。",
@@ -283,6 +302,18 @@
   "skill.ascension.sword_flight": "御剑飞行",
   "skill.ascension.sword_flight.desc": "将剑装备在靴子槽位即可御剑飞行！疾跑加速。飞行时消耗剑耐久。",
   "skill.ascension.sword_flight.desc.2": "速度上限提升至 1.5倍，但耐久消耗也加倍。撞击敌人可造成巨额伤害并收剑。",
+
+  "skill.ascension.thunder_clap": "雷霆万钧",
+  "skill.ascension.thunder_clap.desc": "在准星位置召唤毁灭性的雷电。\n\n§6消耗:§f 铜锭 (基础) / 钻石 (强化)\n§b效果:§f 召唤 1 道闪电打击目标区域。\n§e次要效果:§f 以自身为目标召唤闪电。",
+  "skill.ascension.thunder_clap.desc.2": "在准星位置召唤毁灭性的雷电。\n\n§6消耗:§f 铜锭 (基础) / 钻石 (强化)\n§b效果:§f 召唤 3 道闪电打击目标区域。\n§e次要效果:§f 以自身为目标召唤闪电。",
+  "skill.ascension.thunder_clap.desc.3": "在准星位置召唤毁灭性的雷电。\n\n§6消耗:§f 铜锭 (基础) / 钻石 (强化)\n§b效果:§f 召唤 5 道闪电打击目标区域。\n§e次要效果:§f 以自身为目标召唤闪电。",
+
+  "skill.ascension.blink": "闪现",
+  "skill.ascension.blink.desc": "向视线方向瞬间移动。\n\n§6消耗:§f 铜锭 (基础) / 末影珍珠 (2倍距离)\n§b效果:§f 位移 12 米。若遇阻挡会自动寻找上方落点。\n§e次要效果:§f Alt + 右键可随机传送至附近的位置。",
+  "skill.ascension.blink.desc.2": "向视线方向瞬间移动。\n\n§6消耗:§f 铜锭 (基础) / 末影珍珠 (2倍距离)\n§b效果:§f 位移 12 米。若遇阻挡会自动寻找上方落点。\n§e次要效果:§f Alt + 右键可随机传送至附近的位置。",
+  "skill.ascension.blink.desc.3": "向视线方向瞬间移动。\n\n§6消耗:§f 铜锭 (基础) / 末影珍珠 (2倍距离)\n§b效果:§f 位移 18 米。若遇阻挡会自动寻找上方落点。\n§e次要效果:§f Alt + 右键可随机传送至附近的位置。",
+  "skill.ascension.blink.desc.4": "向视线方向瞬间移动。\n\n§6消耗:§f 铜锭 (基础) / 末影珍珠 (2倍距离)\n§b效果:§f 位移 18 米。若遇阻挡会自动寻找上方落点。\n§e次要效果:§f Alt + 右键可随机传送至附近的位置。",
+
 
   "criterion.ascension.eat_apple": "吃过 %s 个苹果",
   "criterion.ascension.kill_cow": "击杀 %s 只牛",

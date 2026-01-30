@@ -3,6 +3,7 @@ package com.qishui48.ascension.mixin.mechanics;
 import com.qishui48.ascension.util.IEntityDataSaver;
 import net.minecraft.entity.Entity;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtList;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -41,6 +42,16 @@ public abstract class ModEntityDataMixin implements IEntityDataSaver {
         // 如果存档里有我们的数据，就读出来
         if (nbt.contains("ascension.data", 10)) {
             persistentData = nbt.getCompound("ascension.data");
+        }
+        // 数据初始化检查
+        // 确保施法材料区 (casting_materials) 和 技能槽 (active_skill_slots) 列表存在
+        if (persistentData != null) {
+            if (!persistentData.contains("casting_materials", 9)) { // 9 = List
+                persistentData.put("casting_materials", new NbtList());
+            }
+            if (!persistentData.contains("active_skill_slots", 9)) {
+                persistentData.put("active_skill_slots", new NbtList());
+            }
         }
     }
 }

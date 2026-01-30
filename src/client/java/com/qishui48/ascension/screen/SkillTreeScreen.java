@@ -1,7 +1,8 @@
 package com.qishui48.ascension.screen;
 
 import com.qishui48.ascension.AscensionClient;
-import com.qishui48.ascension.network.ModMessages; // 确保导入了这个
+import com.qishui48.ascension.network.ModMessages;
+import com.qishui48.ascension.skill.ActiveSkill; // [新增] 导入 ActiveSkill
 import com.qishui48.ascension.skill.Skill;
 import com.qishui48.ascension.skill.SkillRegistry;
 import com.qishui48.ascension.util.IEntityDataSaver;
@@ -13,14 +14,21 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.NbtList;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.RotationAxis; // [新增] 用于旋转
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class SkillTreeScreen extends Screen {
+    // 假定的纹理路径，你可以替换为你自己的 active_skill_slot.png
+    private static final Identifier TEXTURE = new Identifier("minecraft", "textures/gui/container/inventory.png");
+
     private static double savedScrollX = Double.NaN;
     private static double savedScrollY = Double.NaN;
     private static double savedScale = 1.0;
@@ -28,8 +36,18 @@ public class SkillTreeScreen extends Screen {
     private double scrollX = 0;
     private double scrollY = 0;
     private double scale = 1.0;
-    private boolean isDragging = false;
+    private boolean isDraggingMap = false; // 重命名，区分地图拖拽和技能拖拽
     private int tickCounter = 0;
+
+    // === 拖拽逻辑变量 ===
+    private Skill draggingSkill = null; // 当前正在拖拽的主动技能
+
+    // === 槽位布局常量 ===
+    private static final int SLOT_SIZE = 26;
+    private static final int SLOT_SPACING = 30;
+
+    // 记录从哪个槽位开始拖拽 (-1 表示从树上)
+    private int draggingSlotIndex = -1;
 
     public SkillTreeScreen() { super(Text.translatable("gui.ascension.title")); }
 
@@ -49,7 +67,12 @@ public class SkillTreeScreen extends Screen {
         // === 1. 每次打开 UI 时，强制请求同步 ===
         ClientPlayNetworking.send(ModMessages.SYNC_REQUEST_ID, PacketByteBufs.create());
 
-        // === 重置按钮逻辑 ===
+        // ... (重置按钮代码保持不变) ...
+        initResetButton();
+    }
+
+    private void initResetButton() {
+        // === 重置按钮逻辑 (保持原样，为了代码整洁稍微提取了一下) ===
         int resetBtnWidth = 50;
         int resetBtnHeight = 20;
         int resetBtnX = 10;
@@ -73,7 +96,7 @@ public class SkillTreeScreen extends Screen {
             // 检查冷却
             long lastResetTime = nbt.contains("last_reset_time") ? nbt.getLong("last_reset_time") : 0;
             long currentTime = this.client.world.getTime();
-            long cooldownTicks = 240000L; // 10天
+            long cooldownTicks = 240000L;
 
             if (lastResetTime != 0 && (currentTime - lastResetTime) < cooldownTicks) {
                 canReset = false;
@@ -145,7 +168,7 @@ public class SkillTreeScreen extends Screen {
         double localMouseX = (mouseX - centerX) / scale + centerX;
         double localMouseY = (mouseY - centerY) / scale + centerY;
 
-        // 开始缩放变换
+        // === 1. 渲染技能树 (应用缩放) ===
         context.getMatrices().push();
         context.getMatrices().translate(centerX, centerY, 0);
         context.getMatrices().scale((float)scale, (float)scale, 1.0f);
@@ -157,9 +180,8 @@ public class SkillTreeScreen extends Screen {
         // 第二遍：只绘制已激活的连线（金色），覆盖在上面
         renderLinks(context, centerX, centerY, true);
 
-        // 2. 渲染图标、悬浮框、文字
-        Skill hoveredSkill = null;
-
+        // 使用新的 drawNode 方法替代原有的大循环
+        Skill hoveredSkillInTree = null;
         for (Skill skill : SkillRegistry.getAll()) {
             int currentLevel = getLevel(skill.id);
             boolean isRevealed = isRevealed(skill.id);
@@ -168,122 +190,486 @@ public class SkillTreeScreen extends Screen {
             int drawX = (int)(centerX + skill.x + scrollX);
             int drawY = (int)(centerY + skill.y + scrollY);
 
-            // 碰撞检测（使用局部坐标）
-            boolean isHovered = (localMouseX >= drawX && localMouseX <= drawX + 16 &&
-                    localMouseY >= drawY && localMouseY <= drawY + 16);
+            // 绘制节点 (核心修改点)
+            drawNode(context, skill, drawX, drawY, localMouseX, localMouseY);
 
+            // 简单的悬停检测用于记录，具体 Tooltip 逻辑在后面
+            if (localMouseX >= drawX && localMouseX <= drawX + 26 &&
+                    localMouseY >= drawY && localMouseY <= drawY + 26) {
+                hoveredSkillInTree = skill;
+            }
+        }
+
+        context.getMatrices().pop(); // 结束技能树缩放
+
+        // === 2. 渲染 UI 覆盖层 (不随技能树缩放) ===
+
+        // 渲染右下角的主动技能槽
+        renderActiveSkillSlots(context, mouseX, mouseY);
+
+        // 渲染 HUD (技能点数等)
+        renderHud(context, mouseX, mouseY);
+
+        // === 3. 渲染拖拽中的技能图标 (最顶层) ===
+        if (draggingSkill != null) {
+            context.getMatrices().push();
+            context.getMatrices().translate(0, 0, 300); // 极高的 Z 轴，确保在所有物体之上
+            context.drawItem(draggingSkill.getIcon(), mouseX - 8, mouseY - 8); // 图标跟随鼠标
+            context.getMatrices().pop();
+        }
+
+        // === 4. 渲染 Tooltip (最后渲染以防被遮挡) ===
+        // 优先渲染正在拖拽的槽位提示
+        if (draggingSkill == null && hoveredSkillInTree != null) {
+            renderSkillTooltip(context, mouseX, mouseY, hoveredSkillInTree);
+        }
+
+        super.render(context, mouseX, mouseY, delta);
+    }
+
+    // === [核心] 绘制单个节点 (处理菱形/矩形逻辑) ===
+    private void drawNode(DrawContext context, Skill skill, int x, int y, double localMouseX, double localMouseY) {
+        boolean isActiveSkill = skill instanceof ActiveSkill;
+        boolean isHovered = (localMouseX >= x && localMouseX <= x + 26 && localMouseY >= y && localMouseY <= y + 26);
+
+        int currentLevel = getLevel(skill.id);
+        boolean isUnlocked = currentLevel > 0;
+        boolean isMaxed = currentLevel >= skill.maxLevel;
+        boolean isDisabled = isUnlocked && isSkillDisabled(skill.id);
+
+        // 检查互斥
+        boolean isMutexLocked = false;
+        for (String mutexId : skill.mutexSkills) {
+            if (getLevel(mutexId) > 0) { isMutexLocked = true; break; }
+        }
+
+        // 1. 绘制背景 (形状)
+        if (isActiveSkill) {
+            // === 绘制菱形 ===
+            context.getMatrices().push();
+            // 移动到中心点 (假设节点 26x26，中心+13)
+            context.getMatrices().translate(x + 13, y + 13, 0);
+            context.getMatrices().multiply(RotationAxis.POSITIVE_Z.rotationDegrees(45)); // 旋转45度
+            context.getMatrices().translate(-13, -13, 0); // 回到左上角
+
+            // 绘制旋转后的正方形 -> 视觉上的菱形
+            // 边框颜色逻辑
+            int color = 0xFFFFFFFF; // 默认白
+            if (isMaxed) color = 0xFFFFD700; // 金
+            else if (isUnlocked) color = 0xFF00FF00; // 绿
+            else if (isMutexLocked) color = 0xFFFF0000; // 红
+
+            // 绘制填充背景 (由于旋转了，使用 fill 也会是菱形)
+            context.fill(0, 0, 26, 26, 0x80000000); // 半透明黑底
+            context.drawBorder(0, 0, 26, 26, color); // 边框
+
+            // 高亮
             if (isHovered) {
-                hoveredSkill = skill;
-                context.fill(drawX - 2, drawY - 2, drawX + 18, drawY + 18, 0x40FFFFFF);
+                context.fill(0, 0, 26, 26, 0x40FFFFFF);
             }
 
-            // 画图标
-            context.drawItem(skill.getIcon(), drawX, drawY);
+            context.getMatrices().pop();
+        } else {
+            // === 绘制普通矩形 ===
+            int color = 0xFFFFFFFF;
+            if (isMaxed) color = 0xFFFFD700;
+            else if (isUnlocked) color = 0xFF00FF00;
+            else if (isMutexLocked) color = 0xFFFF0000;
 
-            boolean isUnlocked = currentLevel > 0;
-            boolean isMaxed = currentLevel >= skill.maxLevel;
-            boolean isDisabled = isUnlocked && isSkillDisabled(skill.id); // 是否被停用
+            context.fill(x, y, x + 26, y + 26, 0x80000000);
+            context.drawBorder(x, y, 26, 26, color);
 
-            // === 检查互斥锁定状态 ===
-            boolean isMutexLocked = false;
-            for (String mutexId : skill.mutexSkills) {
-                if (getLevel(mutexId) > 0) {
-                    isMutexLocked = true;
+            if (isHovered) {
+                context.fill(x, y, x + 26, y + 26, 0x40FFFFFF);
+            }
+        }
+
+        // 2. 绘制图标 (始终正向)
+        context.drawItem(skill.getIcon(), x + 5, y + 5);
+
+        // 3. 绘制遮罩 (停用/互斥)
+        if (isDisabled) {
+            context.fill(x, y, x + 26, y + 26, 0xAA000000); // 黑色遮罩
+        } else if (isMutexLocked) {
+            context.fill(x, y, x + 26, y + 26, 0x80FF0000); // 红色遮罩
+        }
+
+        // 4. 等级角标 (Z轴抬高)
+        if (isUnlocked) {
+            context.getMatrices().push();
+            context.getMatrices().translate(0, 0, 200);
+            String count = String.valueOf(currentLevel);
+            context.drawText(this.textRenderer, count,
+                    x + 24 - this.textRenderer.getWidth(count),
+                    y + 24 - this.textRenderer.fontHeight,
+                    0xFFFFFF, true);
+            context.getMatrices().pop();
+        }
+
+        // 5. 技能名称 (带背景)
+        Text name = skill.getName();
+        float textScale = 0.7f;
+        int textWidth = this.textRenderer.getWidth(name);
+
+        context.getMatrices().push();
+        context.getMatrices().translate(x + 13, y - 8, 10);
+        context.getMatrices().scale(textScale, textScale, 1.0f);
+
+        int drawTextX = -textWidth / 2;
+        int textColor = isMaxed ? 0xFFFFD700 : (isUnlocked ? 0xFFFFFFFF : 0xFFAAAAAA);
+        if (isDisabled) textColor = 0xFF555555;
+
+        context.drawText(this.textRenderer, name, drawTextX, 0, textColor, true);
+        context.getMatrices().pop();
+    }
+
+    private void renderActiveSkillSlots(DrawContext context, int mouseX, int mouseY) {
+        int startX = this.width - 20 - (5 * SLOT_SPACING);
+        int startY = this.height - 40;
+
+        // 标题
+        context.drawText(this.textRenderer, Text.translatable("gui.ascension.active_slots"), startX, startY - 24, 0xFFDDDDDD, true);
+
+        // === 帮助图标/文字 ===
+        // 在标题右侧画一个小的 (?)
+        int helpX = startX - 24; // 根据实际宽度调整
+        int helpY = startY - 23;
+        Text helpIcon = Text.literal("[?]");
+        context.drawText(this.textRenderer, helpIcon, helpX, helpY, 0xFFFFFF55, true);
+
+        // 检测鼠标是否悬浮在 [?] 上
+        if (mouseX >= helpX && mouseX <= helpX + 10 && mouseY >= helpY && mouseY <= helpY + 8) {
+            List<net.minecraft.text.OrderedText> helpTooltip = new ArrayList<>();
+
+            // 1. 对于不需要换行的普通行，使用 .asOrderedText()
+            helpTooltip.add(Text.translatable("gui.ascension.help.active_skill.title").formatted(Formatting.GOLD).asOrderedText());
+            helpTooltip.add(Text.translatable("gui.ascension.help.active_skill.drag").formatted(Formatting.GRAY).asOrderedText());
+
+            // 2. 对于包含 \n 的长文本，使用 wrapLines 自动切分
+            // 200 是最大宽度（像素），如果文本没超过这个宽度但有 \n，它也会在 \n 处换行
+            Text keysText = Text.translatable("gui.ascension.help.active_skill.keys").formatted(Formatting.GRAY);
+            helpTooltip.addAll(this.textRenderer.wrapLines(keysText, 200));
+
+            // 3. 使用 drawOrderedTooltip 绘制 (注意方法名变了)
+            context.drawOrderedTooltip(this.textRenderer, helpTooltip, mouseX, mouseY);
+        }
+
+        IEntityDataSaver data = (IEntityDataSaver) this.client.player;
+        NbtList activeSlots = null;
+        if (data.getPersistentData().contains("active_skill_slots", NbtElement.LIST_TYPE)) {
+            activeSlots = data.getPersistentData().getList("active_skill_slots", NbtElement.COMPOUND_TYPE);
+        }
+
+        long currentTime = this.client.world.getTime();
+
+        for (int i = 0; i < 5; i++) {
+            int x = startX + (i * SLOT_SPACING);
+            int y = startY;
+
+            // 1. 绘制底座
+            context.getMatrices().push();
+            context.getMatrices().translate(x + 13, y + 13, 0);
+            context.getMatrices().multiply(RotationAxis.POSITIVE_Z.rotationDegrees(45));
+            context.getMatrices().translate(-13, -13, 0);
+
+            context.fill(0, 0, 26, 26, 0x80000000);
+            boolean isHovered = (mouseX >= x && mouseX <= x + 26 && mouseY >= y && mouseY <= y + 26);
+            int selectedSlot = data.getPersistentData().getInt("selected_active_slot");
+            int borderColor = (i == selectedSlot) ? 0xFFFFFFFF : 0xFF555555;
+            if (isHovered) borderColor = 0xFFFFFFAA;
+
+            context.drawBorder(0, 0, 26, 26, borderColor);
+            context.getMatrices().pop();
+
+            // 2. 绘制技能内容
+            if (activeSlots != null && i < activeSlots.size()) {
+                NbtCompound slotNbt = activeSlots.getCompound(i);
+                String skillId = slotNbt.getString("id");
+
+                if (!skillId.isEmpty()) {
+                    Skill skill = SkillRegistry.get(skillId); // 定义 skill
+
+                    if (skill != null) {
+                        // A. 绘制图标
+                        context.getMatrices().push();
+                        context.getMatrices().translate(x + 13, y + 13, 0);
+                        context.getMatrices().scale(1.3f, 1.3f, 1f);
+                        context.getMatrices().translate(-8, -8, 0);
+                        context.drawItem(skill.getIcon(), 0, 0);
+                        context.getMatrices().pop();
+
+                        // B. 冷却遮罩
+                        long endTime = slotNbt.getLong("cooldown_end");
+                        int totalTime = slotNbt.getInt("cooldown_total");
+
+                        if (currentTime < endTime && totalTime > 0) {
+                            float progress = (float)(endTime - currentTime) / totalTime;
+                            int cx = x + 13;
+                            int cy = y + 13;
+                            int halfDiag = 19;
+                            int maskHeight = (int)(38 * progress);
+                            int waterLevelY = (cy + 19) - maskHeight;
+
+                            context.enableScissor(cx - halfDiag, waterLevelY, cx + halfDiag, cy + 19);
+                            context.getMatrices().push();
+                            context.getMatrices().translate(cx, cy, 10);
+                            context.getMatrices().multiply(RotationAxis.POSITIVE_Z.rotationDegrees(45));
+                            context.getMatrices().translate(-13, -13, 0);
+                            context.fill(0, 0, 26, 26, 0x60FFFFFF);
+                            context.getMatrices().pop();
+                            context.disableScissor();
+                        }
+
+                        // C. 充能数字
+                        int charges = slotNbt.getInt("charges");
+                        if (charges >= 0) {
+                            String countText = String.valueOf(charges);
+                            int textColor = (charges > 0) ? 0xFFFFFFFF : 0xFFFF5555;
+                            context.getMatrices().push();
+                            context.getMatrices().translate(0, 0, 20);
+                            context.drawText(this.textRenderer, countText, x + 20, y + 18, textColor, true);
+                            context.getMatrices().pop();
+                        }
+
+                        // === D. Tooltip (移动到了 skill != null 的作用域内) ===
+                        if (isHovered && draggingSkill == null) {
+                            context.drawTooltip(this.textRenderer, skill.getName(), mouseX, mouseY);
+                        }
+                    }
+                }
+            }
+
+            // 索引数字
+            context.getMatrices().push();
+            context.getMatrices().translate(0, 0, 5);
+            context.drawText(this.textRenderer, String.valueOf(i+1), x + 10, y + 24, 0xFFAAAAAA, true);
+            context.getMatrices().pop();
+        }
+    }
+
+    // 定义变量 (添加到类成员变量区)
+    private double clickStartX, clickStartY;
+    private boolean isPotentialClick = false; // 是否可能是点击事件
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        // 1. 优先处理重置按钮等原生组件
+        if (super.mouseClicked(mouseX, mouseY, button)) return true;
+
+        if (button == 0) {
+            this.clickStartX = mouseX;
+            this.clickStartY = mouseY;
+            this.isPotentialClick = true;
+
+            // A. 检测是否点击了【技能槽】(用于拖出/卸载)
+            int startX = this.width - 20 - (5 * SLOT_SPACING);
+            int startY = this.height - 40;
+            for (int i = 0; i < 5; i++) {
+                int x = startX + (i * SLOT_SPACING);
+                if (mouseX >= x && mouseX <= x + 26 && mouseY >= startY && mouseY <= startY + 26) {
+                    // 获取该槽位的技能
+                    IEntityDataSaver data = (IEntityDataSaver) this.client.player;
+                    NbtList activeSlots = data.getPersistentData().getList("active_skill_slots", NbtElement.COMPOUND_TYPE);
+                    if (i < activeSlots.size()) {
+                        String skillId = activeSlots.getCompound(i).getString("id");
+                        if (!skillId.isEmpty()) {
+                            // 开始拖拽：记录来源槽位
+                            this.draggingSkill = SkillRegistry.get(skillId);
+                            this.draggingSlotIndex = i; // [重点] 标记来源是槽位 i
+                            this.client.getSoundManager().play(net.minecraft.client.sound.PositionedSoundInstance.master(net.minecraft.sound.SoundEvents.UI_BUTTON_CLICK, 1.0F));
+                            return true;
+                        }
+                    }
+                }
+            }
+            // B. 检测是否点击了【技能树节点】(原有逻辑)
+            Skill skillInTree = getSkillAt(mouseX, mouseY);
+            if (skillInTree != null) {
+                // ... 检测解锁状态等 ...
+                int currentLevel = getLevel(skillInTree.id);
+                if (skillInTree instanceof ActiveSkill && currentLevel > 0 && !isSkillDisabled(skillInTree.id)) {
+                    this.draggingSkill = skillInTree;
+                    this.draggingSlotIndex = -1; // [重点] 标记来源是技能树
+                    return true;
+                }
+            }
+            // C. 拖拽地图
+            this.isDraggingMap = true;
+            return true;
+        }
+
+        // 中键 (2): 切换启用状态
+        if (button == 2) {
+            Skill targetSkill = getSkillAt(mouseX, mouseY);
+            if (targetSkill != null) {
+                // 只有非主动技能才允许切换
+                if (targetSkill instanceof ActiveSkill) {
+                    return false; // 忽略主动技能的中键
+                }
+                // 播放音效
+                this.client.getSoundManager().play(net.minecraft.client.sound.PositionedSoundInstance.master(net.minecraft.sound.SoundEvents.UI_BUTTON_CLICK, 1.0F));
+
+                PacketByteBuf buf = PacketByteBufs.create();
+                buf.writeString(targetSkill.id);
+                ClientPlayNetworking.send(ModMessages.TOGGLE_REQUEST_ID, buf);
+                return true;
+            }
+            // 注意：这里也可以添加逻辑：中键点击 ActiveSlot 也可以 Toggle
+            // ...
+            return false;
+        }
+
+        return false;
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+        if (button == 0) {
+            // 计算总移动距离
+            double dist = Math.sqrt(Math.pow(mouseX - clickStartX, 2) + Math.pow(mouseY - clickStartY, 2));
+
+            // === 阈值判定 (比如移动超过 3 像素算拖拽) ===
+            if (dist > 3) {
+                this.isPotentialClick = false; // 移动了，不再算作“点击”
+            }
+
+            if (this.draggingSkill != null) {
+                // 正在拖拽技能图标，消耗事件，不拖拽地图
+                return true;
+            }
+
+            if (this.isDraggingMap) {
+                this.scrollX += deltaX / scale;
+                this.scrollY += deltaY / scale;
+                return true;
+            }
+        }
+        return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (button == 0 && draggingSkill != null) {
+            double dist = Math.sqrt(Math.pow(mouseX - clickStartX, 2) + Math.pow(mouseY - clickStartY, 2));
+            boolean isDragAction = dist > 3;
+
+            // 检测是否放置在槽位上
+            int startX = this.width - 20 - (5 * SLOT_SPACING);
+            int startY = this.height - 40;
+            int dropSlotIndex = -1;
+
+            for (int i = 0; i < 5; i++) {
+                int x = startX + (i * SLOT_SPACING);
+                if (mouseX >= x && mouseX <= x + 26 && mouseY >= startY && mouseY <= startY + 26) {
+                    dropSlotIndex = i;
                     break;
                 }
             }
 
-            // === 如果已解锁但被停用，画一个半透明黑框盖住图标 ===
-            if (isDisabled) {
-                context.fill(drawX, drawY, drawX + 16, drawY + 16, 0xAA000000);
+            // === 逻辑分支 ===
+
+            // 情况 1: 从技能树 -> 拖到槽位 (装备)
+            if (draggingSlotIndex == -1) {
+                if (isDragAction && dropSlotIndex != -1) {
+                    // 发送装备包
+                    PacketByteBuf buf = PacketByteBufs.create();
+                    buf.writeString(draggingSkill.id);
+                    buf.writeInt(dropSlotIndex);
+                    ClientPlayNetworking.send(ModMessages.EQUIP_REQUEST_ID, buf);
+                    this.client.getSoundManager().play(net.minecraft.client.sound.PositionedSoundInstance.master(net.minecraft.sound.SoundEvents.ITEM_ARMOR_EQUIP_DIAMOND, 1.0F));
+                } else if (!isDragAction) {
+                    // 点击升级
+                    handleUnlockClick(draggingSkill);
+                }
             }
-            // === 如果互斥锁定，画一个半透明红框盖住图标 ===
-            else if (isMutexLocked) {
-                context.fill(drawX, drawY, drawX + 16, drawY + 16, 0x80FF0000);
-            }
+            // 情况 2: 从槽位 -> 拖到外面 (卸载)
+            else { // draggingSlotIndex != -1
+                if (isDragAction) {
+                    if (dropSlotIndex == -1) {
+                        // 拖到了空地 -> 卸载
+                        PacketByteBuf buf = PacketByteBufs.create();
+                        buf.writeInt(draggingSlotIndex);
+                        ClientPlayNetworking.send(ModMessages.UNEQUIP_REQUEST_ID, buf);
+                        this.client.getSoundManager().play(net.minecraft.client.sound.PositionedSoundInstance.master(net.minecraft.sound.SoundEvents.ITEM_ARMOR_EQUIP_LEATHER, 1.0F));
+                    } else if (dropSlotIndex != draggingSlotIndex) {
+                        // 拖到了另一个槽位 -> (可选：交换位置，目前简单处理为移动/装备)
+                        PacketByteBuf buf = PacketByteBufs.create();
+                        buf.writeString(draggingSkill.id);
+                        buf.writeInt(dropSlotIndex);
+                        ClientPlayNetworking.send(ModMessages.EQUIP_REQUEST_ID, buf);
 
-            // 状态边框
-            if (isMaxed) {
-                context.drawBorder(drawX - 1, drawY - 1, 18, 18, 0xFFFFD700);
-            } else if (isUnlocked) {
-                context.drawBorder(drawX - 1, drawY - 1, 18, 18, 0xFF00FF00);
-            } else if (skill.isHidden && isRevealed) {
-                int phase = (tickCounter / 2) % 30;
-                int color = (phase < 10) ? 0xFFFF0000 : ((phase < 20) ? 0xFFFFD700 : 0xFFFFFFFF);
-                context.drawBorder(drawX - 1, drawY - 1, 18, 18, color);
-            }
-
-            // 等级角标 (Z轴抬高)
-            context.getMatrices().push();
-            context.getMatrices().translate(0, 0, 200);
-
-            if (isUnlocked) {
-                String count = String.valueOf(currentLevel);
-                context.drawText(this.textRenderer, count,
-                        drawX + 17 - this.textRenderer.getWidth(count),
-                        drawY + 17 - this.textRenderer.fontHeight,
-                        0xFFFFFF, true);
-            }
-
-            // === 渲染技能名 (居中 + 背景条) ===
-            Text name = skill.getName();
-            float textScale = 0.7f;
-            int textWidth = this.textRenderer.getWidth(name);
-
-            // 坐标计算：移动到图标上方中心 (drawX + 8, drawY - 8)
-            context.getMatrices().push();
-            context.getMatrices().translate(drawX + 8, drawY - 8, 10); // Z=10 仅比图标高
-            context.getMatrices().scale(textScale, textScale, 1.0f);
-
-            // 此时 (0,0) 即为图标上方的中心点
-            int drawTextX = -textWidth / 2;
-            int drawTextY = 0;
-
-            // 1. 绘制半透明背景条
-            //context.fill(drawTextX - 2, drawTextY - 2, drawTextX + textWidth + 2, drawTextY + 9, 0x80000000);
-
-            // 2. 绘制文字
-            // 颜色逻辑：如果被停用，显示深灰色；互斥锁定显示红色；否则显示正常颜色
-            int textColor = isMaxed ? 0xFFFFD700 : (isUnlocked ? 0xFFFFFFFF : 0xFFAAAAAA);
-            if (isDisabled) {
-                textColor = 0xFF555555; // 深灰
-            } else if (isMutexLocked) {
-                textColor = 0xFFFF5555; // 浅红
+                        // 同时清空旧槽位?
+                        // 目前 EQUIP_REQUEST 会覆盖目标，但不会清空源。
+                        // 如果需要完美的“移动”效果，建议让服务端 EQUIP 逻辑检测该技能是否已在其他槽，如果在则互换或清空。
+                        // (ModMessages 已有查重逻辑，会阻止装备，所以这里实际上会操作失败并提示“已装备”，符合预期)
+                    }
+                }
             }
 
-            context.drawText(this.textRenderer, name, drawTextX, drawTextY, textColor, true);
-
-            context.getMatrices().pop(); // 结束文字变换
-            context.getMatrices().pop(); // 结束Z轴抬高
+            this.draggingSkill = null;
+            this.draggingSlotIndex = -1;
+            return true;
         }
 
-        context.getMatrices().pop(); // 结束整体缩放变换
-
-        // 3. 渲染 Tooltip
-        if (hoveredSkill != null) {
-            renderSkillTooltip(context, mouseX, mouseY, hoveredSkill);
+        if (button == 0 && isPotentialClick) {
+            Skill clickedSkill = getSkillAt(mouseX, mouseY);
+            if (clickedSkill != null) {
+                handleUnlockClick(clickedSkill);
+            }
         }
 
-        // HUD
-        renderHud(context,mouseX,mouseY);
-
-        // 必须调用这行代码！父类会负责绘制所有通过 addDrawableChild 添加的按钮
-        super.render(context, mouseX, mouseY, delta);
+        this.isDraggingMap = false;
+        this.isPotentialClick = false;
+        return super.mouseReleased(mouseX, mouseY, button);
     }
 
-    // 辅助方法：绘制连线
+    // 辅助方法：处理升级请求
+    private void handleUnlockClick(Skill skill) {
+        this.client.getSoundManager().play(net.minecraft.client.sound.PositionedSoundInstance.master(net.minecraft.sound.SoundEvents.UI_BUTTON_CLICK, 1.0F));
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeString(skill.id);
+        ClientPlayNetworking.send(ModMessages.UNLOCK_REQUEST_ID, buf);
+    }
+
+    // 辅助方法：获取鼠标下的技能
+    private Skill getSkillAt(double mouseX, double mouseY) {
+        int centerX = this.width / 2;
+        int centerY = this.height / 2;
+        double localMouseX = (mouseX - centerX) / scale + centerX;
+        double localMouseY = (mouseY - centerY) / scale + centerY;
+
+        for (Skill skill : SkillRegistry.getAll()) {
+            int currentLevel = getLevel(skill.id);
+            if (skill.isHidden && !isRevealed(skill.id) && currentLevel == 0) continue;
+            int drawX = (int)(centerX + skill.x + scrollX);
+            int drawY = (int)(centerY + skill.y + scrollY);
+            if (localMouseX >= drawX && localMouseX <= drawX + 26 &&
+                    localMouseY >= drawY && localMouseY <= drawY + 26) {
+                return skill;
+            }
+        }
+        return null;
+    }
+
+    // 连线渲染
     private void renderLinks(DrawContext context, int centerX, int centerY, boolean renderActiveOnly) {
+        final int LINE_WIDTH = 2;
+
+        // 基础半径 (矩形)
+        final double RADIUS_SQUARE = 13.0;
+        // 菱形半径 (13 * sqrt(2) ≈ 18.38)，取 18.0 以确保稍微接触不留缝隙
+        final double RADIUS_DIAMOND = 18.0;
+
         for (Skill skill : SkillRegistry.getAll()) {
             int currentLevel = getLevel(skill.id);
             boolean isRevealed = isRevealed(skill.id);
             if (skill.isHidden && !isRevealed && currentLevel == 0) continue;
 
-            // 收集所有父节点 (visualParents 已经包含了 addParent 的内容)
-            List<String> drawLineTo = new ArrayList<>();
-            if (skill.parentId != null) drawLineTo.add(skill.parentId);
-            drawLineTo.addAll(skill.visualParents);
+            List<String> parents = new ArrayList<>();
+            if (skill.parentId != null) parents.add(skill.parentId);
+            parents.addAll(skill.visualParents);
 
-            for (String pid : drawLineTo) {
+            for (String pid : parents) {
                 Skill parent = SkillRegistry.get(pid);
                 if (parent == null) continue;
 
@@ -291,36 +677,97 @@ public class SkillTreeScreen extends Screen {
                 int parentLevel = getLevel(parent.id);
                 if (parent.isHidden && !parentRevealed && parentLevel == 0) continue;
 
-                int x1 = (int)(centerX + parent.x + scrollX) + 8;
-                int y1 = (int)(centerY + parent.y + scrollY) + 8;
-                int x2 = (int)(centerX + skill.x + scrollX) + 8;
-                int y2 = (int)(centerY + skill.y + scrollY) + 8;
+                // 计算中心坐标
+                double x1 = (centerX + parent.x + scrollX) + 13;
+                double y1 = (centerY + parent.y + scrollY) + 13;
+                double x2 = (centerX + skill.x + scrollX) + 13;
+                double y2 = (centerY + skill.y + scrollY) + 13;
 
                 boolean isLinked = currentLevel > 0 && parentLevel > 0;
 
-                // 如果是“只画激活线”模式，但这条线未激活，则跳过
+                if (renderActiveOnly && !isLinked) continue;
+                int color = (!renderActiveOnly) ? 0xFFFFFFFF : 0xFFFFD700;
                 if (renderActiveOnly && !isLinked) continue;
 
-                // 如果是“画所有线”模式，且这条线是激活的，也跳过（留给第二遍画，或者画到底层也没关系，反正会被覆盖）
-                // 为了性能和避免锯齿混合，我们通常第一遍画所有线(白色)，第二遍画金线覆盖
+                // === 关键修改：根据技能类型决定避让半径 ===
+                double offsetStart = (parent instanceof ActiveSkill) ? RADIUS_DIAMOND : RADIUS_SQUARE;
+                double offsetEnd = (skill instanceof ActiveSkill) ? RADIUS_DIAMOND : RADIUS_SQUARE;
 
-                int color = isLinked ? 0xFFFFD700 : 0xFFFFFFFF;
+                // === 绘制 L 型连线 ===
+                double dx = x2 - x1;
+                double dy = y2 - y1;
 
-                // 只有当我们在第二遍循环(renderActiveOnly=true) 且 线是激活的，才画金色
-                // 或者我们在第一遍循环(renderActiveOnly=false) 且 线是不激活的，才画白色
-                // 这里采用简单策略：第一遍全画(白色)，第二遍只画金。
-                if (!renderActiveOnly) {
-                    // 第一遍：只画白色，忽略已经是金色的（避免重复绘制导致边缘锯齿，或者干脆全画白色打底）
-                    color = 0xFFFFFFFF;
-                } else {
-                    // 第二遍：只画金色
-                    if (!isLinked) continue;
+                // 1. 水平段: 从起点横向走到终点的 X 轴
+                if (Math.abs(dx) > 0.5) {
+                    double sx = x1;
+                    double ex = x2;
+                    double dirX = Math.signum(dx);
+
+                    // 起点避让 (Parent)
+                    sx += dirX * offsetStart;
+
+                    // 特殊情况：如果是纯水平直线 (没有垂直段)，终点也要避让 (Skill)
+                    if (Math.abs(dy) < 0.5) {
+                        ex -= dirX * offsetEnd;
+                    }
+
+                    // 绘制 (保证 start < end)
+                    if ((dirX > 0 && sx < ex) || (dirX < 0 && sx > ex)) {
+                        fillLine(context, sx, y1, ex, y1, LINE_WIDTH, color);
+                    }
                 }
 
-                if (x1 != x2) context.fill(Math.min(x1, x2), y1 - 1, Math.max(x1, x2), y1 + 1, color);
-                if (y1 != y2) context.fill(x2 - 1, Math.min(y1, y2), x2 + 1, Math.max(y1, y2), color);
+                // 2. 垂直段: 从拐点纵向走到终点的 Y 轴
+                if (Math.abs(dy) > 0.5) {
+                    double sy = y1;
+                    double ey = y2;
+                    double dirY = Math.signum(dy);
+
+                    // 终点避让 (Skill)
+                    ey -= dirY * offsetEnd;
+
+                    // 特殊情况：如果是纯垂直直线 (没有水平段)，起点也要避让 (Parent)
+                    if (Math.abs(dx) < 0.5) {
+                        sy += dirY * offsetStart;
+                    }
+
+                    // 绘制
+                    if ((dirY > 0 && sy < ey) || (dirY < 0 && sy > ey)) {
+                        fillLine(context, x2, sy, x2, ey, LINE_WIDTH, color);
+                    }
+                }
             }
         }
+    }
+
+    // 辅助方法：绘制水平或垂直的矩形线段 (保持不变)
+    private void fillLine(DrawContext context, double x1, double y1, double x2, double y2, int width, int color) {
+        double minX = Math.min(x1, x2);
+        double maxX = Math.max(x1, x2);
+        double minY = Math.min(y1, y2);
+        double maxY = Math.max(y1, y2);
+
+        double halfWidth = width / 2.0;
+
+        if (Math.abs(y1 - y2) < 0.1) {
+            // 横线
+            context.fill((int)minX, (int)(y1 - halfWidth), (int)maxX + 1, (int)(y1 + halfWidth) + 1, color);
+        } else {
+            // 竖线
+            context.fill((int)(x1 - halfWidth), (int)minY, (int)(x1 + halfWidth) + 1, (int)maxY + 1, color);
+        }
+    }
+
+    // 辅助获取父节点坐标
+    private int getParentX(Skill skill) {
+        if(skill.parentId == null) return 0;
+        Skill p = SkillRegistry.get(skill.parentId);
+        return p != null ? p.x : 0;
+    }
+    private int getParentY(Skill skill) {
+        if(skill.parentId == null) return 0;
+        Skill p = SkillRegistry.get(skill.parentId);
+        return p != null ? p.y : 0;
     }
 
     private void renderHud(DrawContext context,int mouseX,int mouseY){
@@ -367,7 +814,6 @@ public class SkillTreeScreen extends Screen {
         }
     }
 
-    // 替换整个 renderSkillTooltip 方法
     private void renderSkillTooltip(DrawContext context, int mouseX, int mouseY, Skill skill) {
         int currentLevel = getLevel(skill.id);
         boolean isRevealed = isRevealed(skill.id);
@@ -532,75 +978,6 @@ public class SkillTreeScreen extends Screen {
         context.drawOrderedTooltip(this.textRenderer, tooltip, mouseX, mouseY);
     }
 
-    @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        // === 1. 最优先：让 Minecraft 原生 UI 组件（如你在 init 中添加的重置按钮）处理点击 ===
-        // 如果按钮处理了点击，它会返回 true，我们直接返回，不再进行后续逻辑
-        if (super.mouseClicked(mouseX, mouseY, button)) {
-            return true;
-        }
-
-        // === 2. 其次：处理技能树内的图标交互 ===
-        int centerX = this.width / 2;
-        int centerY = this.height / 2;
-        double localMouseX = (mouseX - centerX) / scale + centerX;
-        double localMouseY = (mouseY - centerY) / scale + centerY;
-
-        for (Skill skill : SkillRegistry.getAll()) {
-            int currentLevel = getLevel(skill.id);
-            boolean isRevealed = isRevealed(skill.id);
-            if (skill.isHidden && !isRevealed && currentLevel == 0) continue;
-
-            int drawX = (int)(centerX + skill.x + scrollX);
-            int drawY = (int)(centerY + skill.y + scrollY);
-
-            // 检测点击是否在技能图标范围内
-            if (localMouseX >= drawX && localMouseX <= drawX + 16 &&
-                    localMouseY >= drawY && localMouseY <= drawY + 16) {
-
-                if (this.client != null) {
-                    this.client.getSoundManager().play(net.minecraft.client.sound.PositionedSoundInstance.master(net.minecraft.sound.SoundEvents.UI_BUTTON_CLICK, 1.0F));
-                }
-
-                // 左键 (0): 升级/解锁
-                if (button == 0) {
-                    PacketByteBuf buf = PacketByteBufs.create();
-                    buf.writeString(skill.id);
-                    ClientPlayNetworking.send(ModMessages.UNLOCK_REQUEST_ID, buf);
-                    return true; // 消耗事件
-                }
-
-                // 中键 (2): 切换启用状态
-                if (button == 2) {
-                    PacketByteBuf buf = PacketByteBufs.create();
-                    buf.writeString(skill.id);
-                    ClientPlayNetworking.send(ModMessages.TOGGLE_REQUEST_ID, buf);
-                    return true; // 消耗事件
-                }
-            }
-        }
-
-        // === 3. 最后：如果没有点中按钮，也没点中技能，且是左键，则视为拖拽地图 ===
-        if (button == 0) {
-            this.isDragging = true;
-            return true;
-        }
-
-        // 移除了原本底部的“手动按钮检测代码”，因为你已经在 init() 里使用了 ButtonWidget，
-        // 那段代码是多余的，而且检测位置（右下角）也和你现在的按钮位置（左上角）不符。
-
-        return false;
-    }
-
-    @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
-        if (this.isDragging) {
-            this.scrollX += deltaX / scale;
-            this.scrollY += deltaY / scale;
-            return true;
-        }
-        return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
-    }
 
     private int getLevel(String id) {
         if (this.client == null || this.client.player == null) return 0;
@@ -620,7 +997,6 @@ public class SkillTreeScreen extends Screen {
         return false;
     }
 
-    // === [新增] 辅助方法：检查本地是否停用 ===
     private boolean isSkillDisabled(String id) {
         if (this.client == null || this.client.player == null) return false;
         IEntityDataSaver data = (IEntityDataSaver) this.client.player;

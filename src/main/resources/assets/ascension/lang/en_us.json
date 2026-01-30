@@ -1,6 +1,9 @@
 {
   "category.ascension.general": "Ascension Mastery",
   "key.ascension.open_gui": "Open Skill Tree",
+  "key.ascension.combo_alt": "Skill Combo Key",
+  "key.ascension.cast_primary": "Cast Active Skill",
+  "key.ascension.cast_secondary": "Cast Skill Secondary Effect",
   "dimension.minecraft.overworld": "Overworld",
   "dimension.minecraft.the_nether": "The Nether",
   "dimension.minecraft.the_end": "The End",
@@ -54,6 +57,8 @@
   "gui.ascension.controls_hint": "L-Click to Drag, Scroll to Zoom, M-Click to Toggle Skill",
   "gui.ascension.help_tip": "How to earn Skill Points",
   "gui.ascension.tooltip.criterion_progress": "%s- %s (%s/%s)",
+  "gui.ascension.active_slots": "Active Slots",
+  "gui.ascension.material_slot": "Material Slot %s",
   "tooltip.ascension.help.collect": "Collect new items (+1~4)",
   "tooltip.ascension.help.food": "Taste new foods (+2)",
   "tooltip.ascension.help.explore": "Discover new biomes (+2) / dimensions (+20)",
@@ -83,6 +88,12 @@
   "gui.ascension.reset": "Reset Skill Tree",
   "gui.ascension.reset.tooltip": "Reset all skills\nCost: 1395 XP (+1395/reset)\nCooldown: 10 Days\nRefunds all Skill Points",
 
+  "gui.ascension.help.active_skill.title": "Active Skill Guide",
+  "gui.ascension.help.active_skill.drag": "Drag icons to slots below to equip",
+  "gui.ascension.help.active_skill.keys": "Select Slot: Alt + Num/Scroll\nPrimary: Alt + L-Click\nSecondary: Alt + R-Click",
+  "gui.ascension.material_help.priority": "Priority: Top to Bottom",
+  "gui.ascension.material_help.reduce_cd": "R-Click: Consume material to reduce CD by 25%",
+
   "_comment_command": "--- Command Feedback ---",
   "command.ascension.set_skills.success": "[Debug] Skill points set to: %s",
   "command.ascension.condition.grant": "Criteria granted (UI Updated)",
@@ -106,6 +117,14 @@
   "message.ascension.reset_cooldown": "Reset is on cooldown. Remaining: %s days",
   "message.ascension.not_enough_xp": "Not enough Experience! Need %s XP.",
   "message.ascension.reset_success": "Skill Tree reset! Skill points refunded.",
+  "message.ascension.slot_cooldown_active": "Cannot swap: Skill is currently on cooldown!",
+  "message.ascension.no_material": "Insufficient materials for casting!",
+  "message.ascension.skill_already_equipped": "This skill is already equipped!",
+  "message.ascension.skill_not_recharged": "Skill not fully recharged, cannot unequip!",
+  "message.ascension.cooldown_reduced": "Cooldown accelerated.",
+  "message.ascension.blink_fail": "Could not find a safe destination nearby!",
+  "message.ascension.slot_locked": "Slot locked! Upgrade the 'Mastery' skill to unlock.",
+  "message.ascension.cooldown_full": "All skills are ready, no need to accelerate.",
 
   "enchantment.ascension.life_steal": "Life Steal",
   "enchantment.ascension.speed_steal": "Speed Steal",
@@ -200,8 +219,8 @@
   "skill.ascension.rocket_boost.desc.2": "Allows you to jump two extra times in mid-air.",
 
   "skill.ascension.charged_jump": "Charged Jump",
-  "skill.ascension.charged_jump.desc": "Sneak and hold Jump to charge. Release to launch.",
-  "skill.ascension.charged_jump.desc.2": "Sneak and hold Jump to charge. Release to launch extremely far.",
+  "skill.ascension.charged_jump.desc": "Sneak and hold Jump to charge. Release to launch higher and further.",
+  "skill.ascension.charged_jump.desc.2": "Sneak and hold Jump to charge. Release to launch extremely high and far.",
 
   "skill.ascension.battle_instinct": "Battle Instinct",
   "skill.ascension.battle_instinct.desc": "Increases attack speed.",
@@ -213,8 +232,8 @@
   "skill.ascension.adrenaline_burst.desc.2": "Grants massive Absorption and Speed when taking heavy damage at full health.",
 
   "skill.ascension.excitement": "Frenzy",
-  "skill.ascension.excitement.desc": "Rapidly consumes hunger to regenerate health when taking heavy damage.",
-  "skill.ascension.excitement.desc.2": "Consumes hunger to regenerate massive amounts of health when taking heavy damage.",
+  "skill.ascension.excitement.desc": "When taking heavy damage, rapidly consumes hunger to regenerate health.",
+  "skill.ascension.excitement.desc.2": "When taking heavy damage, consumes hunger to regenerate massive amounts of health.",
 
   "skill.ascension.hunger_constitution": "Hunger Constitution",
   "skill.ascension.hunger_constitution.desc": "Grants Absorption when hunger drops.",
@@ -258,13 +277,13 @@
 
   "skill.ascension.gold_panning": "Gold Panning",
   "skill.ascension.gold_panning.desc": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (5% chance)! Chance affected by shovel tier and Fortune.",
-  "skill.ascension.gold_panning.desc.2": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (7% chance)! Chance affected by shovel tier and Fortune.",
-  "skill.ascension.gold_panning.desc.3": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (9% chance)! Chance affected by shovel tier and Fortune.",
-  "skill.ascension.gold_panning.desc.4": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (11% chance)! Chance affected by shovel tier and Fortune.",
-  "skill.ascension.gold_panning.desc.5": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (13% chance)! Chance affected by shovel tier and Fortune.",
-  "skill.ascension.gold_panning.desc.6": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (15% chance)! Chance affected by shovel tier and Fortune.",
-  "skill.ascension.gold_panning.desc.7": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (17% chance)! Chance affected by shovel tier and Fortune.",
-  "skill.ascension.gold_panning.desc.8": "Use a Shovel on Sand to consume 4 durability and find Gold Ingots (19% chance)! Chance affected by shovel tier and Fortune.",
+  "skill.ascension.gold_panning.desc.2": "Use a Shovel on Sand to find Gold Ingots (7% chance).",
+  "skill.ascension.gold_panning.desc.3": "Use a Shovel on Sand to find Gold Ingots (9% chance).",
+  "skill.ascension.gold_panning.desc.4": "Use a Shovel on Sand to find Gold Ingots (11% chance).",
+  "skill.ascension.gold_panning.desc.5": "Use a Shovel on Sand to find Gold Ingots (13% chance).",
+  "skill.ascension.gold_panning.desc.6": "Use a Shovel on Sand to find Gold Ingots (15% chance).",
+  "skill.ascension.gold_panning.desc.7": "Use a Shovel on Sand to find Gold Ingots (17% chance).",
+  "skill.ascension.gold_panning.desc.8": "Use a Shovel on Sand to find Gold Ingots (19% chance).",
 
   "skill.ascension.academic_miner": "Academic Miner",
   "skill.ascension.academic_miner.desc": "Grants extra experience when mining ores.",
@@ -281,8 +300,20 @@
   "skill.ascension.human_dynamo.desc.3": "Gain 11 XP for every 100 meters traveled.",
 
   "skill.ascension.sword_flight": "Sword Flight",
-  "skill.ascension.sword_flight.desc": "Equip a Sword in your Boots slot to fly! Sprint to accelerate with high inertia. Consumes sword durability while flying.",
+  "skill.ascension.sword_flight.desc": "Equip a Sword in your Boots slot to fly! Sprint to accelerate. Consumes sword durability while flying.",
   "skill.ascension.sword_flight.desc.2": "Max speed increased to 1.5x, but durability cost is doubled. Crashing into enemies deals massive damage and unequips the sword.",
+
+  "skill.ascension.thunder_clap": "Thunder Clap",
+  "skill.ascension.thunder_clap.desc": "Summon devastating lightning at your crosshair.\n\n§6Cost:§f Copper Ingot (Basic) / Diamond (Empowered)\n§bEffect:§f Strikes 1 lightning bolt at the target.\n§eSecondary:§f Strikes lightning on yourself.",
+  "skill.ascension.thunder_clap.desc.2": "Summon devastating lightning at your crosshair.\n\n§6Cost:§f Copper Ingot (Basic) / Diamond (Empowered)\n§bEffect:§f Strikes 3 lightning bolts at the target area.\n§eSecondary:§f Strikes lightning on yourself.",
+  "skill.ascension.thunder_clap.desc.3": "Summon devastating lightning at your crosshair.\n\n§6Cost:§f Copper Ingot (Basic) / Diamond (Empowered)\n§bEffect:§f Strikes 5 lightning bolts at the target area.\n§eSecondary:§f Strikes lightning on yourself.",
+
+  "skill.ascension.blink": "Blink",
+  "skill.ascension.blink.desc": "Teleport instantly in the direction you are looking.\n\n§6Cost:§f Copper Ingot (Basic) / Ender Pearl (2x Distance)\n§bEffect:§f Teleports 12 blocks. Auto-adjusts for obstacles.\n§eSecondary:§f Alt + R-Click to teleport to a random nearby location.",
+  "skill.ascension.blink.desc.2": "Teleport instantly in the direction you are looking.\n\n§6Cost:§f Copper Ingot (Basic) / Ender Pearl (2x Distance)\n§bEffect:§f Teleports 12 blocks. Auto-adjusts for obstacles.\n§eSecondary:§f Alt + R-Click to teleport to a random nearby location.",
+  "skill.ascension.blink.desc.3": "Teleport instantly in the direction you are looking.\n\n§6Cost:§f Copper Ingot (Basic) / Ender Pearl (2x Distance)\n§bEffect:§f Teleports 18 blocks. Auto-adjusts for obstacles.\n§eSecondary:§f Alt + R-Click to teleport to a random nearby location.",
+  "skill.ascension.blink.desc.4": "Teleport instantly in the direction you are looking.\n\n§6Cost:§f Copper Ingot (Basic) / Ender Pearl (2x Distance)\n§bEffect:§f Teleports 18 blocks. Auto-adjusts for obstacles.\n§eSecondary:§f Alt + R-Click to teleport to a random nearby location.",
+
 
   "criterion.ascension.eat_apple": "Ate %s apples",
   "criterion.ascension.kill_cow": "Killed %s cows",
@@ -313,7 +344,7 @@
   "criterion.ascension.collect_crops": "Harvested %s types of crops",
   "criterion.ascension.craft_bread": "Crafted %s Bread",
   "criterion.ascension.collect_honey": "Collected %s Honey Bottles",
-  "criterion.ascension.harvest_pumpkin": "Harvested %s Pumpkins",
+  "criterion.ascension.harvest_gauge_pumpkin": "Harvested %s Pumpkins",
   "criterion.ascension.move_underwater": "Traveled %s meters underwater",
   "criterion.ascension.boat_on_ice": "Rowed a boat %s meters on ice",
   "criterion.ascension.brew_water_breathing": "Brewed %s Potions of Water Breathing",

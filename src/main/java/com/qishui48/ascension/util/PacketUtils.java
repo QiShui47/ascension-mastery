@@ -31,6 +31,11 @@ public class PacketUtils {
         if (nbt.contains("disabled_skills")) syncNbt.put("disabled_skills", nbt.get("disabled_skills"));
         if (nbt.contains("reset_count")) syncNbt.putInt("reset_count", nbt.getInt("reset_count"));
         if (nbt.contains("last_reset_time")) syncNbt.putLong("last_reset_time", nbt.getLong("last_reset_time"));
+        // 同步主动技能槽和施法材料
+        if (nbt.contains("active_skill_slots")) syncNbt.put("active_skill_slots", nbt.get("active_skill_slots"));
+        if (nbt.contains("casting_materials")) syncNbt.put("casting_materials", nbt.get("casting_materials"));
+        if (nbt.contains("selected_active_slot")) syncNbt.putInt("selected_active_slot", nbt.getInt("selected_active_slot"));
+
 
         // === 服务端预计算条件状态与进度 ===
         NbtCompound criteriaCache = new NbtCompound();
@@ -167,7 +172,7 @@ public class PacketUtils {
         syncSkillData(player);
     }
 
-    // === 新增：判断技能是否激活 (核心判断方法) ===
+    // === 判断技能是否激活 (核心判断方法) ===
     // 所有的 Mixin 和 EffectHandler 以后都要用这个方法！
     // 逻辑：已解锁 AND 未停用
     public static boolean isSkillActive(ServerPlayerEntity player, String skillId) {
@@ -178,6 +183,58 @@ public class PacketUtils {
             return false; // 虽然解锁了，但是被玩家手动停用了
         }
         return true;
+    }
+
+    public static void setSkillCooldown(ServerPlayerEntity player, String skillId, int cooldownTicks) {
+        IEntityDataSaver dataSaver = (IEntityDataSaver) player;
+        NbtCompound nbt = dataSaver.getPersistentData();
+
+        if (!nbt.contains("active_skill_slots", 9)) return;
+        net.minecraft.nbt.NbtList activeSlots = nbt.getList("active_skill_slots", 10);
+
+        boolean found = false;
+        long currentTime = player.getWorld().getTime();
+        long endTime = currentTime + cooldownTicks;
+
+        for (int i = 0; i < activeSlots.size(); i++) {
+            NbtCompound slotNbt = activeSlots.getCompound(i);
+            if (slotNbt.getString("id").equals(skillId)) {
+                // 存储结束时间戳
+                slotNbt.putLong("cooldown_end", endTime);
+                // 记录总时间，用于计算进度条
+                slotNbt.putInt("cooldown_total", cooldownTicks);
+                found = true;
+                break;
+            }
+        }
+
+        if (found) {
+            nbt.put("active_skill_slots", activeSlots);
+            syncSkillData(player);
+        }
+    }
+
+    // 设置充能数
+    public static void setSkillCharges(ServerPlayerEntity player, String skillId, int charges) {
+        IEntityDataSaver dataSaver = (IEntityDataSaver) player;
+        NbtCompound nbt = dataSaver.getPersistentData();
+
+        if (!nbt.contains("active_skill_slots", 9)) return;
+        net.minecraft.nbt.NbtList activeSlots = nbt.getList("active_skill_slots", 10);
+
+        boolean found = false;
+        for (int i = 0; i < activeSlots.size(); i++) {
+            NbtCompound slotNbt = activeSlots.getCompound(i);
+            if (slotNbt.getString("id").equals(skillId)) {
+                slotNbt.putInt("charges", charges);
+                found = true;
+                break;
+            }
+        }
+        if (found) {
+            nbt.put("active_skill_slots", activeSlots);
+            syncSkillData(player);
+        }
     }
 
     // 发送自定义通知

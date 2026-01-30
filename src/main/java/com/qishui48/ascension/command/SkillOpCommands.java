@@ -4,6 +4,7 @@ import com.qishui48.ascension.skill.Skill;
 import com.qishui48.ascension.skill.SkillEffectHandler;
 import com.qishui48.ascension.skill.SkillRegistry;
 import com.qishui48.ascension.skill.UnlockCriterion;
+import com.qishui48.ascension.util.IEntityDataSaver;
 import com.qishui48.ascension.util.PacketUtils;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -95,6 +96,41 @@ public class SkillOpCommands {
                                 })
                         )
                 ));
+
+        // /setactiveskillcd <槽位> <ticks>
+        dispatcher.register(CommandManager.literal("setactiveskillcd")
+                .requires(source -> source.hasPermissionLevel(2))
+                .then(CommandManager.argument("slot", IntegerArgumentType.integer(0, 4))
+                        .then(CommandManager.argument("ticks", IntegerArgumentType.integer(0))
+                                .executes(context -> {
+                                    int slot = IntegerArgumentType.getInteger(context, "slot");
+                                    int ticks = IntegerArgumentType.getInteger(context, "ticks");
+                                    ServerPlayerEntity player = context.getSource().getPlayer();
+
+                                    // 调用 PacketUtils 里的逻辑
+                                    IEntityDataSaver data = (IEntityDataSaver) player;
+                                    net.minecraft.nbt.NbtList activeSlots = data.getPersistentData().getList("active_skill_slots", 10);
+
+                                    if (slot < activeSlots.size()) {
+                                        net.minecraft.nbt.NbtCompound slotNbt = activeSlots.getCompound(slot);
+                                        long now = player.getWorld().getTime();
+                                        slotNbt.putLong("cooldown_end", now + ticks);
+
+                                        if (slotNbt.getInt("cooldown_total") < ticks) {
+                                            slotNbt.putInt("cooldown_total", ticks);
+                                        }
+
+                                        data.getPersistentData().put("active_skill_slots", activeSlots);
+                                        com.qishui48.ascension.util.PacketUtils.syncSkillData(player);
+
+                                        context.getSource().sendFeedback(() -> Text.literal("Cooldown set."), true);
+                                    }
+                                    PacketUtils.syncSkillData(player);
+                                    return 1;
+                                })
+                        )
+                )
+        );
     }
     // 辅助方法
     private static int modifyCriteria(com.mojang.brigadier.context.CommandContext<ServerCommandSource> context, boolean grant, int targetLevel) throws com.mojang.brigadier.exceptions.CommandSyntaxException {

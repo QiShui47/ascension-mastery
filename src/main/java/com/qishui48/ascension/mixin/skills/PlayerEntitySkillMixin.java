@@ -410,9 +410,9 @@ public class PlayerEntitySkillMixin {
         } else {
             hasSkill = true;
         }
-
         if (!hasSkill) {
             this.isSwordFlying = false;
+            player.sendMessage(Text.translatable("message.ascension.skill_needed").formatted(Formatting.RED), true);
             return;
         }
 
@@ -645,5 +645,63 @@ public class PlayerEntitySkillMixin {
         if (material == net.minecraft.item.ToolMaterials.GOLD) return 1.22;      // +22%
         if (material == net.minecraft.item.ToolMaterials.NETHERITE) return 1.25; // +25%
         return 1.0; // 默认
+    }
+
+    // 检查装备合法性
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void onTickEquipmentCheck(CallbackInfo ci) {
+        PlayerEntity player = (PlayerEntity) (Object) this;
+        if (!player.getWorld().isClient && player instanceof ServerPlayerEntity serverPlayer) {
+            validateEquipment(serverPlayer);
+        }
+    }
+    // === 辅助方法：强制卸下非法装备 ===
+    @Unique
+    private void validateEquipment(ServerPlayerEntity player) {
+        // 1. 检查脚部 (御剑飞行)
+        ItemStack feetStack = player.getEquippedStack(EquipmentSlot.FEET);
+        if (feetStack.getItem() instanceof SwordItem) {
+            if (!PacketUtils.isSkillActive(player, "sword_flight")) {
+                // 没技能却装备了剑 -> 强制卸下
+                //unequipSword(player, feetStack);
+                unequipItem(player, EquipmentSlot.FEET, feetStack);
+                player.sendMessage(Text.translatable("message.ascension.skill_required_invalid", Text.translatable("skill.ascension.sword_flight")), true);
+            }
+        }
+
+        // 2. 检查头部 (缸中之脑)
+        ItemStack headStack = player.getEquippedStack(EquipmentSlot.HEAD);
+        if (headStack.getItem() instanceof net.minecraft.item.BlockItem bi && bi.getBlock() instanceof net.minecraft.block.AbstractGlassBlock) {
+            if (!PacketUtils.isSkillActive(player, "brain_in_a_jar")) {
+                // 没技能却装备了玻璃 -> 强制卸下
+                unequipItem(player, EquipmentSlot.HEAD, headStack);
+                player.sendMessage(Text.translatable("message.ascension.skill_required_invalid", Text.translatable("skill.ascension.brain_in_a_jar")), true);
+            }
+        }
+    }
+
+    // 通用的卸装备方法
+    @Unique
+    private void unequipItem(ServerPlayerEntity player, EquipmentSlot slot, ItemStack stack) {
+        // 1. 复制物品数据
+        ItemStack toReturn = stack.copy();
+
+        // 2. 立即清空非法槽位 (关键：先清空，防止逻辑死循环)
+        player.equipStack(slot, ItemStack.EMPTY);
+
+        // 3. 安全返还物品
+        // offerOrDrop 会优先塞背包，塞不下自动扔地上，逻辑比 insertStack 更完善
+        player.getInventory().offerOrDrop(toReturn);
+
+        // 4. 播放音效
+        player.playSound(SoundEvents.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
+
+        // 5. 暴力同步数据，解决 Ghost Item
+        // 发送整个容器的更新包，确保客户端知道“脚空了”且“背包满回来了”
+        player.currentScreenHandler.sendContentUpdates();
+        player.playerScreenHandler.sendContentUpdates();
+
+        // 如果玩家正打开着物品栏，强制更新光标上的物品（防止拖拽时的残留）
+        player.getInventory().markDirty();
     }
 }

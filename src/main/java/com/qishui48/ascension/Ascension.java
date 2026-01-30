@@ -10,6 +10,7 @@ import com.qishui48.ascension.network.ModMessages;
 import com.qishui48.ascension.skill.SkillEffectHandler;
 import com.qishui48.ascension.skill.SkillRegistry;
 import com.qishui48.ascension.util.PacketUtils;
+import com.qishui48.ascension.util.SkillCooldownManager;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.minecraft.enchantment.Enchantment;
@@ -138,11 +139,14 @@ public class Ascension implements ModInitializer {
 		Registry.register(Registries.CUSTOM_STAT, EXPLORE_BASTION, EXPLORE_BASTION);
 		SkillRegistry.registerAll();
 
-		//踏足新维度的事件
+		// 踏足新维度的事件
 		ModEvents.register();
 
 		// 注册网络包
 		ModMessages.registerC2SPackets();
+
+		// 注册冷却与充能逻辑
+		SkillCooldownManager.register();
 
 		// 注册登录同步事件 - 玩家加入服务器时
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
@@ -167,6 +171,6 @@ public class Ascension implements ModInitializer {
 			// 把旧数据的 NBT 完整拷贝给新数据
 			newData.getPersistentData().copyFrom(oldData.getPersistentData());
 		});
-		LOGGER.info("Template Mod Initialized!");
+		LOGGER.info("Ascension Mastery Initialized!");
 	}
 }

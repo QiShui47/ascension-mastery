@@ -6,7 +6,10 @@
 		"MovementSkillMixin",
 		"JumpBlockerMixin",
 		"PlayerEntityModelMixin",
-		"ClientReachMixin"
+		"ClientReachMixin",
+		"InventoryScreenMixin",
+		"KeyboardMixin",
+		"MouseMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

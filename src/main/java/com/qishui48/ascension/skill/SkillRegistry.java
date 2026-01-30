@@ -207,6 +207,47 @@ public class SkillRegistry {
         register(new Skill("telekinesis", Items.ENDER_EYE, 2, "mining", 2, 10, 15)
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.PLACE_BLOCK_COUNT, 2000, "criterion.ascension.place_block_count"))
                 .addUpgradeCriterion(2, new UnlockCriterion(Stats.CUSTOM, Ascension.USE_ENDER_PEARL_COUNT, 64, "criterion.ascension.use_64_pearls")));
+
+        // ==========================================================
+        // === Active Skills (主动技能) ===
+        // ==========================================================
+
+        // 雷霆万钧 (Thunder Clap)
+        ActiveSkill thunderClap = new ActiveSkill(
+                "thunder_clap",
+                Items.LIGHTNING_ROD,
+                3,
+                "melancholic_personality",
+                3,
+                new int[]{1, 2, 2}, // maxCharges
+                new int[]{1200, 1200, 900}, // 冷却
+                10, 15, 15 // costs
+        );
+        thunderClap.addIngredient(Items.COPPER_INGOT, 1, false, 0)
+                .addIngredient(Items.DIAMOND, 1, true, 3);
+        thunderClap.addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.KILL_CHARGED_CREEPER, 1, "criterion.ascension.kill_charged_creeper"));
+        thunderClap.setBehavior(SkillActionHandler::executeThunderClap); // 保持行为绑定
+        register(thunderClap);
+
+        // 闪现 (Blink)
+        ActiveSkill blink = new ActiveSkill(
+                "blink",
+                Items.ENDER_PEARL, // 图标
+                2, // Tier
+                "miscellaneous", // Parent
+                4, // Max Level
+                new int[]{1, 2, 2, 3}, // Charges: 1, 2, 2, 3
+                new int[]{400, 400, 400, 400}, // Cooldown: 20s
+                25, 30, 35, 40 // Costs
+        );
+
+        blink.addIngredient(Items.COPPER_INGOT, 1, false, 0)
+                .addIngredient(Items.ENDER_PEARL, 1, true, 1); // bonusEffect=1 (flag for double range)
+
+        blink.setBehavior(SkillActionHandler::executeBlink);
+
+        register(blink);
+
         // 计算布局
         calculateLayout();
     }
