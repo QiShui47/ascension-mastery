@@ -146,7 +146,15 @@ public class SkillOpCommands {
 
                 for (UnlockCriterion c : skill.getCriteria(lvl)) {
                     int targetValue = grant ? c.getThreshold() : 0;
-                    player.getStatHandler().setStat(player, c.getStat(), targetValue);
+                    // 1. 如果是原版 Stat 条件，走原版逻辑
+                    if (c.getStat() != null) {
+                        player.getStatHandler().setStat(player, c.getStat(), targetValue);
+                    }
+                    // 2. 如果是 NBT 条件，走 NBT 修改逻辑
+                    else if (c.getNbtKey() != null) {
+                        // 使用 PacketUtils.setData 安全修改 NBT
+                        PacketUtils.setData(player, c.getNbtKey(), targetValue);
+                    }
                 }
             }
             // === 撤销条件时同时锁定技能 ===

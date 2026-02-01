@@ -73,7 +73,7 @@ public class ShovelItemMixin {
                     // 移除沙子
                     world.setBlockState(pos, Blocks.AIR.getDefaultState());
                     // 掉落金锭
-                    ItemEntity itemEntity = new ItemEntity(world, pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, new ItemStack(Items.GOLD_INGOT));
+                    ItemEntity itemEntity = new ItemEntity(world, pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, new ItemStack(Items.RAW_GOLD));
                     world.spawnEntity(itemEntity);
                     // 额外提示音
                     world.playSound(null, pos, SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.PLAYERS, 0.5f, 1.5f);

@@ -35,15 +35,21 @@ public abstract class InventoryScreenMixin extends AbstractInventoryScreen<Playe
     // 绘制格子
     @Inject(method = "render", at = @At("TAIL"))
     public void renderMaterials(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-        int startX = this.x + 179;
-        int startY = this.y + 7;
+        // 绘制在右侧的策略
+        // int startX = this.x + 179;
+        // int startY = this.y + 7;
+        // 绘制在下方的策略
+        int startX = x + 43;
+        int startY = y + 166 + 4;
 
         IEntityDataSaver data = (IEntityDataSaver) this.client.player;
         NbtList materials = data.getPersistentData().getList("casting_materials", NbtElement.COMPOUND_TYPE);
 
         for (int i = 0; i < 5; i++) {
-            int x = startX;
-            int y = startY + (i * 20);
+            //int x = startX;
+            //int y = startY + (i * 20);
+            int x = startX + (i * 18);
+            int y = startY;
 
             // 1. 绘制格子背景
             context.fill(x, y, x + 18, y + 18, 0xFF8B8B8B);
@@ -87,12 +93,16 @@ public abstract class InventoryScreenMixin extends AbstractInventoryScreen<Playe
     // 处理点击：放入/取出物品
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
     public void onMaterialSlotClick(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
-        int startX = this.x + 179;
-        int startY = this.y + 7;
+        //int startX = this.x + 179;
+        //int startY = this.y + 7;
+        int startX = x + 43;
+        int startY = y + 166 + 4;
 
         for (int i = 0; i < 5; i++) {
-            int x = startX;
-            int y = startY + (i * 20);
+            //int x = startX;
+            //int y = startY + (i * 20);
+            int x = startX + (i * 18);
+            int y = startY;
 
             if (mouseX >= x && mouseX <= x + 18 && mouseY >= y && mouseY <= y + 18) {
                 // 左键 (0): 取出/放入
@@ -120,12 +130,16 @@ public abstract class InventoryScreenMixin extends AbstractInventoryScreen<Playe
     // === 拦截鼠标松开，防止原版逻辑干扰施法材料区的拖拽动作 ===
     @Inject(method = "mouseReleased", at = @At("HEAD"), cancellable = true)
     public void onMaterialSlotRelease(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
-        int startX = this.x + 179;
-        int startY = this.y + 7;
+        //int startX = this.x + 179;
+        //int startY = this.y + 7;
+        int startX = x + 43;
+        int startY = y + 166 + 4;
 
         for (int i = 0; i < 5; i++) {
-            int x = startX;
-            int y = startY + (i * 20);
+            //int x = startX;
+            //int y = startY + (i * 20);
+            int x = startX + (i * 18);
+            int y = startY;
 
             // 如果是在我们的槽位上松开鼠标，直接消耗掉事件，不让原版处理
             if (mouseX >= x && mouseX <= x + 18 && mouseY >= y && mouseY <= y + 18) {

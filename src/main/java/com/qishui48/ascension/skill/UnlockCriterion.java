@@ -71,6 +71,10 @@ public class UnlockCriterion {
         return Text.translatable(translationKey, displayValue);
     }
 
+    public String getNbtKey() {
+        return nbtKey;
+    }
+
     // 解锁条件单位修正
     public double getDisplayDivisor() {
         return this.displayDivisor;

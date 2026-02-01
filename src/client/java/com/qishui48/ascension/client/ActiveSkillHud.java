@@ -62,6 +62,22 @@ public class ActiveSkillHud implements HudRenderCallback {
                 NbtCompound slotNbt = activeSlots.getCompound(i);
                 String skillId = slotNbt.getString("id");
 
+                // === 通用：绘制持续时间条 (Bus System) ===
+                // 只要槽位里有 effect_end 且未过期，就画条
+                if (slotNbt.contains("effect_end")) {
+                    long end = slotNbt.getLong("effect_end");
+                    int total = slotNbt.getInt("effect_total");
+                    long now = client.world.getTime();
+
+                    if (end > now && total > 0) {
+                        float progress = (float)(end - now) / total;
+                        // 画在图标下方
+                        renderDurationBar(context, x, y - 4, progress, 0xFFFFD700); // 金色
+                    } else {
+                        // 过期了可以清理 NBT (可选，客户端清理视觉即可)
+                    }
+                }
+
                 if (!skillId.isEmpty()) {
                     Skill skill = SkillRegistry.get(skillId);
                     if (skill != null) {
@@ -176,5 +192,13 @@ public class ActiveSkillHud implements HudRenderCallback {
             context.drawText(client.textRenderer, keyNum, x + 13 - (client.textRenderer.getWidth(keyNum) / 2), y + 24, 0xFFAAAAAA, true);
             context.getMatrices().pop();
         }
+    }
+    // 辅助方法：绘制小条
+    private void renderDurationBar(DrawContext context, int x, int y, float progress, int color) {
+        int barWidth = 16;
+        int barHeight = 2;
+        int filledWidth = (int)(barWidth * progress);
+        context.fill(x + 5, y, x + 5 + barWidth, y + barHeight, 0x80000000); // 背景
+        context.fill(x + 5, y, x + 5 + filledWidth, y + barHeight, color);   // 进度
     }
 }

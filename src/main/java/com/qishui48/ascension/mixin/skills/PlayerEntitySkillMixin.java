@@ -1,11 +1,14 @@
 package com.qishui48.ascension.mixin.skills;
 
+import com.qishui48.ascension.Ascension;
+import com.qishui48.ascension.block.entity.TemporaryGlowingBlockEntity;
 import com.qishui48.ascension.mixin.mechanics.LivingEntityAccessor;
 import com.qishui48.ascension.skill.SkillEffectHandler;
 import com.qishui48.ascension.util.DistanceUtils;
 import com.qishui48.ascension.util.IEntityDataSaver;
 import com.qishui48.ascension.util.PacketUtils;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
@@ -16,11 +19,13 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.inventory.SimpleInventory;
 import net.minecraft.item.*;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.particle.ParticleTypes;
 import net.minecraft.recipe.RecipeType;
 import net.minecraft.recipe.SmeltingRecipe;
 import net.minecraft.registry.tag.BlockTags;
 import net.minecraft.registry.tag.FluidTags;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
@@ -43,6 +48,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static com.qishui48.ascension.skill.SkillEffectHandler.applySugarMasterEffect;
+import net.fabricmc.loader.api.FabricLoader;
 
 @Mixin(PlayerEntity.class)
 public class PlayerEntitySkillMixin {
@@ -57,7 +63,7 @@ public class PlayerEntitySkillMixin {
         if (!player.getWorld().isClient && player instanceof ServerPlayerEntity serverPlayer) {
             int level = PacketUtils.getSkillLevel(serverPlayer, "pocket_furnace");
             if (level <= 0) return;
-            // === [修复] 使用 isSkillActive 替代 getSkillLevel > 0 ===
+            // === 使用 isSkillActive 替代 getSkillLevel > 0 ===
             // 这样当玩家中键停用技能时，逻辑会立即停止
             if (!PacketUtils.isSkillActive(serverPlayer, "pocket_furnace")) {
                 // 如果当前正在熔炼中（Timer > 0），说明技能刚被关掉，需要重置状态
@@ -703,5 +709,126 @@ public class PlayerEntitySkillMixin {
 
         // 如果玩家正打开着物品栏，强制更新光标上的物品（防止拖拽时的残留）
         player.getInventory().markDirty();
+    }
+
+    @Unique
+    private Boolean hasDynamicLightsMod = null;
+
+    @Inject(method = "tick", at = @At("TAIL"))
+    private void tickRadiantAvatar(CallbackInfo ci) {
+        // 1. 先转为通用的 PlayerEntity (客户端服务端都安全)
+        PlayerEntity self = (PlayerEntity) (Object) this;
+
+        // 2. 检查是否在客户端，如果是，直接返回，不做任何逻辑
+        // 注意：必须先检查这个，才能进行后续的 ServerPlayerEntity 转换
+        if (self.getWorld().isClient) return;
+
+        // 3. 确认为服务端后，安全转换
+        if (!(self instanceof ServerPlayerEntity player)) return;
+
+        if (hasDynamicLightsMod == null) {
+            hasDynamicLightsMod = FabricLoader.getInstance().isModLoaded("lambdynlights");
+        }
+
+        // --- 以下逻辑保持不变 ---
+        IEntityDataSaver data = (IEntityDataSaver) player;
+        NbtCompound nbt = data.getPersistentData();
+        long now = player.getWorld().getTime(); // 使用 player.getWorld()
+
+        // === 检查主要效果 (光环伤害) ===
+        if (nbt.contains("radiant_damage_end")) {
+            long endTime = nbt.getLong("radiant_damage_end");
+            if (now < endTime) {
+                // 发光逻辑
+                if (!hasDynamicLightsMod) { //没有动态光源模组支持时使用本模组的简易发光策略
+                    if (now % 2 == 0) {
+                        smartPlaceLight(player.getWorld(), player.getBlockPos());
+                    }
+                }
+                // 1. 视觉效果 (光辉粒子)
+                if (now % 5 == 0) {
+                    // 强转为 ServerWorld 以便使用 spawnParticles
+                    ((ServerWorld) player.getWorld()).spawnParticles(ParticleTypes.WAX_ON,
+                            player.getX(), player.getY() + 1.0, player.getZ(),
+                            2, 0.5, 0.5, 0.5, 0.0);
+                }
+
+                // 2. 伤害逻辑
+                if (now % 10 == 0) {
+                    double range = 8.0;
+                    player.getWorld().getEntitiesByClass(net.minecraft.entity.mob.MobEntity.class,
+                                    player.getBoundingBox().expand(range),
+                                    entity -> entity.getGroup() == net.minecraft.entity.EntityGroup.UNDEAD && entity.isAlive())
+                            .forEach(undead -> {
+                                double dist = undead.distanceTo(player);
+                                if (dist <= range) {
+                                    double damage = 12.7 * Math.exp(-0.231 * dist);
+                                    // 注意：需要确保 damageSources 访问正确，如果在 Mixin 中无法直接访问 getDamageSources()
+                                    // 可以尝试 player.getDamageSources() (1.20+)
+                                    undead.damage(player.getDamageSources().inFire(), (float) damage);
+                                    undead.setOnFireFor(2);
+                                }
+                            });
+                }
+            }
+        }
+
+        // === 检查次要效果 (仅发光) ===
+        if (nbt.contains("radiant_light_end")) {
+            long endTime = nbt.getLong("radiant_light_end");
+            if (now < endTime) {
+                if (!hasDynamicLightsMod) {
+                    if (now % 2 == 0) {
+                    smartPlaceLight(player.getWorld(), player.getBlockPos());
+                    }
+                }
+
+                if (now % 20 == 0) {
+                    ((ServerWorld) player.getWorld()).spawnParticles(ParticleTypes.FLAME,
+                            player.getX(), player.getY() + 0.5, player.getZ(),
+                            1, 0.3, 0.3, 0.3, 0.01);
+                }
+            }
+        }
+    }
+    @Unique
+    private void smartPlaceLight(World world, BlockPos feetPos) {
+        // 优先头顶，其次脚下，其次防卡位
+        BlockPos[] targets = {
+                feetPos.up(),
+                feetPos,
+                feetPos.up(2),
+                feetPos.north(), feetPos.south(), feetPos.west(), feetPos.east()
+        };
+
+        for (BlockPos pos : targets) {
+            if (tryPlaceOrRefreshLight(world, pos)) {
+                return;
+            }
+        }
+    }
+    // === 辅助方法：尝试放置或刷新光源 ===
+    // @Unique 注解表示这是 Mixin 特有的新方法，避免冲突
+    @Unique
+    private boolean tryPlaceOrRefreshLight(World world, BlockPos pos) {
+        BlockState state = world.getBlockState(pos);
+
+        // 情况 A: 已经是发光方块 -> 续命
+        if (state.isOf(Ascension.TEMPORARY_GLOWING_BLOCK)) {
+            BlockEntity be = world.getBlockEntity(pos);
+            if (be instanceof TemporaryGlowingBlockEntity glowingBe) {
+                glowingBe.refresh();
+                return true; // 成功维持光照
+            }
+        }
+        // 情况 B: 是空气 -> 放置新方块
+        else if (state.isAir()) {
+            world.setBlockState(pos, Ascension.TEMPORARY_GLOWING_BLOCK.getDefaultState());
+            // 设置后不需要手动 refresh，因为新创建的 BE 自带初始寿命
+            return true; // 成功建立光照
+        }
+
+        // 情况 C: 是其他方块 (地毯、花、墙壁) -> 失败，交由调用者尝试下一个位置
+        return false;
     }
 }

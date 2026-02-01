@@ -36,6 +36,18 @@ public class PacketUtils {
         if (nbt.contains("casting_materials")) syncNbt.put("casting_materials", nbt.get("casting_materials"));
         if (nbt.contains("selected_active_slot")) syncNbt.putInt("selected_active_slot", nbt.getInt("selected_active_slot"));
 
+        if (nbt.contains("invincible_damage_end")) syncNbt.putLong("invincible_damage_end", nbt.getLong("invincible_damage_end"));
+        if (nbt.contains("invincible_damage_total")) syncNbt.putInt("invincible_damage_total", nbt.getInt("invincible_damage_total"));
+        if (nbt.contains("invincible_status_end")) syncNbt.putLong("invincible_status_end", nbt.getLong("invincible_status_end"));
+        if (nbt.contains("invincible_status_total")) syncNbt.putInt("invincible_status_total", nbt.getInt("invincible_status_total"));
+
+        if (nbt.contains("radiant_damage_end")) {
+            syncNbt.putLong("radiant_damage_end", nbt.getLong("radiant_damage_end"));
+        }
+        if (nbt.contains("radiant_light_end")) {
+            syncNbt.putLong("radiant_light_end", nbt.getLong("radiant_light_end"));
+        }
+
 
         // === 服务端预计算条件状态与进度 ===
         NbtCompound criteriaCache = new NbtCompound();

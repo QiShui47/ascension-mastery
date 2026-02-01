@@ -3,6 +3,7 @@ package com.qishui48.ascension.skill;
 import com.qishui48.ascension.util.IEntityDataSaver;
 import com.qishui48.ascension.util.MotionJumpUtils;
 import com.qishui48.ascension.util.PacketUtils;
+import com.qishui48.ascension.util.SkillSoundHandler;
 import net.minecraft.entity.EntityType;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -265,6 +266,271 @@ public class SkillActionHandler {
         // 如果你要求“必须落在方块上”，解开下面注释：
         // boolean ground = !world.getBlockState(pos.down()).getCollisionShape(world, pos.down()).isEmpty();
         // return air1 && air2 && ground;
+    }
+
+    // 不败金身
+    public static boolean executeInvincibleBody(ServerPlayerEntity player, ActiveSkill skill, boolean isSecondary) {
+        // 1. 消耗材料 (逻辑不变)
+        ActiveSkill.CastIngredient usedIngredient = findMaterial(player, skill);
+        if (usedIngredient == null && !player.isCreative()) {
+            player.sendMessage(Text.translatable("message.ascension.no_material").formatted(Formatting.RED), true);
+            return false;
+        }
+        consumeMaterial(player, usedIngredient);
+
+        // 2. 计算时间
+        int baseDuration = 80;
+        int bonus = (usedIngredient != null && usedIngredient.isPriority) ? usedIngredient.bonusEffect : 0;
+        int totalDuration = baseDuration + bonus;
+        long now = player.getWorld().getTime();
+        long endTime = now + totalDuration;
+
+        IEntityDataSaver data = (IEntityDataSaver) player;
+        NbtCompound nbt = data.getPersistentData();
+
+        // === 核心修改：写入槽位 NBT (通用总线) ===
+        // 找到这个技能在哪个槽位，并写入 effect_total 和 effect_end
+        updateSkillSlotBus(player, skill.id, totalDuration, endTime);
+
+        if (isSecondary) {
+            // 逻辑判定依然使用 Player Root NBT (因为 Mixin 读取这里最快，不用遍历槽位)
+            nbt.putLong("invincible_status_end", endTime);
+            // 统一音效调用
+            SkillSoundHandler.playSkillSound(player, SkillSoundHandler.SoundType.BUFF);
+            player.sendMessage(Text.translatable("message.ascension.invincible_status_active").formatted(Formatting.GOLD), true);
+        } else {
+            nbt.putLong("invincible_damage_end", endTime);
+            SkillSoundHandler.playSkillSound(player, SkillSoundHandler.SoundType.DEFENSE);
+            player.sendMessage(Text.translatable("message.ascension.invincible_damage_active").formatted(Formatting.GOLD), true);
+        }
+
+        PacketUtils.syncSkillData(player);
+        return true;
+    }
+
+    // === 新增：辅助方法，更新槽位总线数据 ===
+    public static void updateSkillSlotBus(ServerPlayerEntity player, String skillId, int totalDuration, long endTime) {
+        IEntityDataSaver data = (IEntityDataSaver) player;
+        NbtCompound nbt = data.getPersistentData();
+        if (!nbt.contains("active_skill_slots", 9)) return;
+
+        net.minecraft.nbt.NbtList activeSlots = nbt.getList("active_skill_slots", 10);
+        for (int i = 0; i < activeSlots.size(); i++) {
+            NbtCompound slotNbt = activeSlots.getCompound(i);
+            if (slotNbt.getString("id").equals(skillId)) {
+                // 写入通用视觉键值对
+                slotNbt.putInt("effect_total", totalDuration);
+                slotNbt.putLong("effect_end", endTime);
+                // 必须重新 set 一下以确保 NBT 标记为脏 (虽然 modify 引用通常有效，但 set 更保险)
+                activeSlots.set(i, slotNbt);
+                break;
+            }
+        }
+        nbt.put("active_skill_slots", activeSlots);
+    }
+
+    // === 龙焰 (Dragon Breath) ===
+    public static boolean executeDragonBreath(ServerPlayerEntity player, ActiveSkill skill, boolean isSecondary) {
+        int level = PacketUtils.getSkillLevel(player, skill.id);
+        if (level <= 0) return false;
+
+        World world = player.getWorld();
+
+        // === 次要效果：弹幕轰炸 (消耗 16 铜锭 + 16 火焰弹) ===
+        if (isSecondary) {
+            // 1. 检查材料 (特殊逻辑：同时需要两种)
+            if (!player.isCreative()) {
+                boolean hasCopper = checkMaterialCount(player, Items.COPPER_INGOT, 16);
+                boolean hasCharge = checkMaterialCount(player, Items.FIRE_CHARGE, 16);
+
+                if (!hasCopper || !hasCharge) {
+                    player.sendMessage(Text.translatable("message.ascension.no_material").formatted(Formatting.RED), true);
+                    return false;
+                }
+
+                // 消耗材料
+                consumeMaterialCount(player, Items.COPPER_INGOT, 16);
+                consumeMaterialCount(player, Items.FIRE_CHARGE, 16);
+            }
+
+            // 2. 修改冷却 (60秒 = 1200 ticks)
+            PacketUtils.setSkillCooldown(player, skill.id, 1200);
+
+            // 3. 连续发射逻辑
+            int count = (level == 1) ? 9 : (level == 2) ? 13 : 16;
+
+            // 使用 Timer 制造连发效果
+            for (int i = 0; i < count; i++) {
+                final int delay = i * 250; // 每 0.25秒一发
+                new Timer().schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        player.getServer().execute(() -> {
+                            if (player.isRemoved()) return;
+                            spawnDragonFireball(player, true, 0); // 精准发射
+                        });
+                    }
+                }, delay);
+            }
+            return true;
+        }
+
+        // === 主要效果：散射 ===
+        ActiveSkill.CastIngredient usedIngredient = findMaterial(player, skill);
+        if (usedIngredient == null && !player.isCreative()) {
+            player.sendMessage(Text.translatable("message.ascension.no_material").formatted(Formatting.RED), true);
+            return false;
+        }
+        consumeMaterial(player, usedIngredient);
+
+        // 计算数量
+        int baseCount = (level == 1) ? 1 : (level == 2) ? 4 : 7;
+        if (usedIngredient != null && usedIngredient.isPriority) {
+            baseCount *= 2; // 恶魂之泪翻倍
+        }
+
+        // 发射
+        for (int i = 0; i < baseCount; i++) {
+            boolean isAccurate = (i == 0); // 第一发精准
+            spawnDragonFireball(player, isAccurate, i * 0.15); // 后续增加偏移
+        }
+
+        // 播放龙息音效
+        world.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ENTITY_ENDER_DRAGON_SHOOT, SoundCategory.PLAYERS, 1.0f, 0.8f);
+
+        return true;
+    }
+
+    // 辅助：生成并发射龙焰弹
+    private static void spawnDragonFireball(ServerPlayerEntity player, boolean precise, double spreadBase) {
+        World world = player.getWorld();
+        Vec3d look = player.getRotationVector();
+        //look = new Vec3d(look.x, 0, look.z).normalize();
+
+        if (!precise) {
+            double spreadX = world.random.nextGaussian() * spreadBase;
+            double spreadZ = world.random.nextGaussian() * spreadBase;
+
+            // 直接叠加到 Look 向量的 X 和 Z 分量上
+            // 这样会使弹道在水平方向上产生随机偏转，而 Y 轴(垂直)方向保持相对稳定
+            look = look.add(spreadX, 0, spreadZ).normalize();
+        }
+
+        // 恶魂吐的是 FireballEntity (爆炸)，烈焰人是 SmallFireballEntity (燃烧)
+        Vec3d spawnPos = player.getEyePos().add(look.multiply(4.0));
+        net.minecraft.entity.projectile.FireballEntity fireball = new net.minecraft.entity.projectile.FireballEntity(world, player, look.x, look.y, look.z, 1);
+        // 设置位置到计算好的安全点
+        fireball.setPosition(spawnPos.x, spawnPos.y, spawnPos.z);
+
+        // 设置速度 (保持水平)
+        fireball.setVelocity(look.x * 2.0, look.y * 2.0, look.z * 2.0);
+        world.spawnEntity(fireball);
+    }
+
+    // 辅助：检查特定物品数量
+    private static boolean checkMaterialCount(ServerPlayerEntity player, net.minecraft.item.Item item, int required) {
+        IEntityDataSaver data = (IEntityDataSaver) player;
+        NbtList list = data.getPersistentData().getList("casting_materials", NbtElement.COMPOUND_TYPE);
+        int total = 0;
+        for (NbtElement e : list) {
+            ItemStack s = ItemStack.fromNbt((NbtCompound) e);
+            if (s.isOf(item)) total += s.getCount();
+        }
+        return total >= required;
+    }
+
+    // 辅助：消耗特定物品数量 (跨格子)
+    private static void consumeMaterialCount(ServerPlayerEntity player, net.minecraft.item.Item item, int amount) {
+        IEntityDataSaver data = (IEntityDataSaver) player;
+        NbtList list = data.getPersistentData().getList("casting_materials", NbtElement.COMPOUND_TYPE);
+        int remaining = amount;
+
+        for (int i = 0; i < list.size(); i++) {
+            if (remaining <= 0) break;
+            NbtCompound c = list.getCompound(i);
+            ItemStack s = ItemStack.fromNbt(c);
+            if (s.isOf(item)) {
+                int take = Math.min(s.getCount(), remaining);
+                s.decrement(take);
+                remaining -= take;
+                if (s.isEmpty()) list.set(i, new NbtCompound());
+                else {
+                    NbtCompound newC = new NbtCompound();
+                    s.writeNbt(newC);
+                    list.set(i, newC);
+                }
+            }
+        }
+        data.getPersistentData().put("casting_materials", list);
+        PacketUtils.syncSkillData(player);
+        player.currentScreenHandler.syncState();
+    }
+
+    // === 光耀化身 (Radiant Avatar) ===
+    public static boolean executeRadiantAvatar(ServerPlayerEntity player, ActiveSkill skill, boolean isSecondary) {
+        // === 次要效果：仅发光 ===
+        if (isSecondary) {
+            // 1. 检查材料 (1根烈焰棒)
+            if (!player.isCreative()) {
+                if (!checkMaterialCount(player, Items.BLAZE_ROD, 1)) {
+                    player.sendMessage(Text.translatable("message.ascension.no_material").formatted(Formatting.RED), true);
+                    return false;
+                }
+                consumeMaterialCount(player, Items.BLAZE_ROD, 1);
+            }
+
+            // 2. 持续 45秒 (900 ticks)
+            long duration = 900;
+            long endTime = player.getWorld().getTime() + duration;
+
+            // 写入 NBT (使用专用 Key)
+            IEntityDataSaver data = (IEntityDataSaver) player;
+            data.getPersistentData().putLong("radiant_light_end", endTime);
+
+            // 更新槽位显示
+            updateSkillSlotBus(player, skill.id, (int)duration, endTime);
+
+            // CD: 45s
+            PacketUtils.setSkillCooldown(player, skill.id, 900);
+
+            SkillSoundHandler.playSkillSound(player, SkillSoundHandler.SoundType.BUFF);
+            player.sendMessage(Text.translatable("message.ascension.radiant_light_active").formatted(Formatting.YELLOW), true);
+            PacketUtils.syncSkillData(player);
+            return true;
+        }
+
+        // === 主要效果：亡灵杀手光环 ===
+        int level = PacketUtils.getSkillLevel(player, skill.id);
+        if (level <= 0) return false;
+
+        // 1. 消耗材料 (3根烈焰棒)
+        if (!player.isCreative()) {
+            if (!checkMaterialCount(player, Items.BLAZE_ROD, 3)) {
+                player.sendMessage(Text.translatable("message.ascension.no_material").formatted(Formatting.RED), true);
+                return false;
+            }
+            consumeMaterialCount(player, Items.BLAZE_ROD, 3);
+        }
+
+        // 2. 持续 12秒 (240 ticks)
+        int duration = 240;
+        long endTime = player.getWorld().getTime() + duration;
+
+        IEntityDataSaver data = (IEntityDataSaver) player;
+        // 设置光环结束时间
+        data.getPersistentData().putLong("radiant_damage_end", endTime);
+
+        // 更新槽位显示
+        updateSkillSlotBus(player, skill.id, duration, endTime);
+
+        // CD: 45s
+        PacketUtils.setSkillCooldown(player, skill.id, 900);
+
+        SkillSoundHandler.playSkillSound(player, SkillSoundHandler.SoundType.ACTIVATE);
+        player.sendMessage(Text.translatable("message.ascension.radiant_damage_active").formatted(Formatting.GOLD), true);
+        PacketUtils.syncSkillData(player);
+
+        return true;
     }
 
     // === 通用辅助方法：查找材料 ===

@@ -38,8 +38,10 @@ public class ServerStatHandlerMixin {
             if (targetLevel > skill.maxLevel) continue;
 
             for (UnlockCriterion criterion : skill.getCriteria(targetLevel)) {
-                // 如果这个条件关心的统计数据就是当前变化的 stat
-                if (criterion.getStat().equals(stat)) {
+                // === [修复] 增加非空检查 ===
+                // 只有当 criterion 是基于 Stat (非 NBT) 时，getStat() 才不为 null。
+                // 如果是 NBT 条件，getStat() 为 null，直接跳过 (因为它不会由 setStat 触发)
+                if (criterion.getStat() != null && criterion.getStat().equals(stat)) {
                     int threshold = criterion.getThreshold();
 
                     // 核心判定：旧值不达标，新值达标 -> 刚刚完成！

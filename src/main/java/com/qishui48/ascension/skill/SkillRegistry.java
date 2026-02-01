@@ -221,7 +221,7 @@ public class SkillRegistry {
                 3,
                 new int[]{1, 2, 2}, // maxCharges
                 new int[]{1200, 1200, 900}, // 冷却
-                10, 15, 15 // costs
+                10, 10, 10 // costs
         );
         thunderClap.addIngredient(Items.COPPER_INGOT, 1, false, 0)
                 .addIngredient(Items.DIAMOND, 1, true, 3);
@@ -238,15 +238,65 @@ public class SkillRegistry {
                 4, // Max Level
                 new int[]{1, 2, 2, 3}, // Charges: 1, 2, 2, 3
                 new int[]{400, 400, 400, 400}, // Cooldown: 20s
-                25, 30, 35, 40 // Costs
+                10, 10, 10, 10 // Costs
         );
-
         blink.addIngredient(Items.COPPER_INGOT, 1, false, 0)
                 .addIngredient(Items.ENDER_PEARL, 1, true, 1); // bonusEffect=1 (flag for double range)
-
         blink.setBehavior(SkillActionHandler::executeBlink);
-
         register(blink);
+
+        // 不败金身 (Invincible Body)
+        ActiveSkill invincibleBody = new ActiveSkill(
+                "invincible_body",
+                Items.GOLDEN_CHESTPLATE,
+                4, // Tier 4 (高级技能)
+                "health_boost", // 父节点
+                2, // Max Level
+                new int[]{2, 2}, // Charges: 都是2次
+                new int[]{1200, 900}, // Cooldown: Lv1=60s(1200t), Lv2=45s(900t)
+                10, 10 // Costs
+        );
+        invincibleBody.addIngredient(Items.COPPER_INGOT, 1, false, 0)
+                .addIngredient(Items.GOLD_INGOT, 1, true, 60);
+        invincibleBody.addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.SURVIVE_EXPLOSION, 1, "criterion.ascension.survive_explosion"));
+        invincibleBody.setBehavior(SkillActionHandler::executeInvincibleBody);
+        register(invincibleBody);
+
+        // 龙焰 (Dragon Flame)
+        ActiveSkill dragonFlame = new ActiveSkill(
+                "dragon_flame",
+                Items.DRAGON_BREATH,
+                3,
+                "thermal_dynamo",
+                3,
+                new int[]{1, 1, 1}, // 最大充能 1 次
+                new int[]{400, 400, 400}, // 基础冷却 20s
+                10, 10, 10 // 消耗
+        );
+        dragonFlame.addIngredient(Items.COPPER_INGOT, 1, false, 0);
+        dragonFlame.addIngredient(Items.GHAST_TEAR, 1, true, 1);
+        dragonFlame.addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.KILL_GHAST_WITH_REFLECTION, 1, "criterion.ascension.kill_ghast_reflection"));
+        dragonFlame.addUpgradeCriterion(3, new UnlockCriterion(Stats.PICKED_UP, Items.DRAGON_BREATH, 1, "criterion.ascension.pickup_dragon_breath"));
+        dragonFlame.setBehavior(SkillActionHandler::executeDragonBreath);
+        register(dragonFlame);
+
+        // 光耀化身 (Radiant Avatar)
+        ActiveSkill radiantAvatar = new ActiveSkill(
+                "radiant_avatar",
+                Items.NETHER_STAR, // 图标
+                3, // Tier (雷霆万钧是3，这个也是3或4，父节点是 thunder_clap)
+                "thunder_clap",
+                2, // Max Level
+                new int[]{1, 1}, // Charges
+                new int[]{900, 900}, // Cooldown: 45s
+                20, 30 // Costs
+        );
+        radiantAvatar.addIngredient(Items.BLAZE_ROD, 3, false, 0);
+        radiantAvatar.addCriterion(new UnlockCriterion("undead_type_count", 8, "criterion.ascension.kill_undead_types"));
+        radiantAvatar.addUpgradeCriterion(2, new UnlockCriterion(Stats.PICKED_UP, Items.NETHER_STAR, 1, "criterion.ascension.obtain_nether_star"));
+
+        radiantAvatar.setBehavior(SkillActionHandler::executeRadiantAvatar);
+        register(radiantAvatar);
 
         // 计算布局
         calculateLayout();

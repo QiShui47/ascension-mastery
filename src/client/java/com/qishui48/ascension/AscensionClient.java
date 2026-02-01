@@ -2,6 +2,7 @@ package com.qishui48.ascension;
 
 import com.qishui48.ascension.client.ActiveSkillHud;
 import com.qishui48.ascension.client.NotificationHud;
+import com.qishui48.ascension.compat.LambDynLightsCompat;
 import com.qishui48.ascension.mixin.mechanics.LivingEntityAccessor;
 import com.qishui48.ascension.network.ModMessages;
 import com.qishui48.ascension.screen.SkillTreeScreen;
@@ -12,8 +13,10 @@ import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.entity.EntityType;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.text.Text;
@@ -67,16 +70,6 @@ public class AscensionClient implements ClientModInitializer {
 		// 1. 注册 HUD 渲染
 		HudRenderCallback.EVENT.register(new NotificationHud());
 		HudRenderCallback.EVENT.register(new ActiveSkillHud()); // 注册技能槽 HUD
-
-		/*
-		ClientTickEvents.END_CLIENT_TICK.register(client -> {
-			NotificationHud.tick();
-			while (openGuiKey.wasPressed()) {
-				if (client.currentScreen == null) {
-					client.setScreen(new SkillTreeScreen());
-				}
-			}
-		});*/
 
 		LivingEntityFeatureRendererRegistrationCallback.EVENT.register((entityType, entityRenderer, registrationHelper, context) -> {
 			if (entityRenderer instanceof PlayerEntityRenderer) {
@@ -158,6 +151,13 @@ public class AscensionClient implements ClientModInitializer {
 			}
 		});
 
+		// === 软依赖加载 ===
+		// 检查模组是否加载
+		if (FabricLoader.getInstance().isModLoaded("lambdynlights")) {
+			// 只有存在时，才去触碰 Compat 类
+			LambDynLightsCompat.register();
+		}
+
 		registerS2CPackets();
 	}
 
@@ -209,6 +209,15 @@ public class AscensionClient implements ClientModInitializer {
 					}
 					if (incomingNbt.contains("selected_active_slot")) {
 						localNbt.putInt("selected_active_slot", incomingNbt.getInt("selected_active_slot"));
+					}
+
+					// 接收光耀化身数据
+					if (incomingNbt.contains("radiant_damage_end")) {
+						localNbt.putLong("radiant_damage_end", incomingNbt.getLong("radiant_damage_end"));
+					}
+					// 接收次要效果数据
+					if (incomingNbt.contains("radiant_light_end")) {
+						localNbt.putLong("radiant_light_end", incomingNbt.getLong("radiant_light_end"));
 					}
 				}
 			});

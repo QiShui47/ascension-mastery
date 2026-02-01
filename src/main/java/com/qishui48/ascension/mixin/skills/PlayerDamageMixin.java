@@ -2,14 +2,17 @@ package com.qishui48.ascension.mixin.skills;
 
 import com.qishui48.ascension.Ascension;
 import com.qishui48.ascension.skill.SkillEffectHandler;
+import com.qishui48.ascension.util.IEntityDataSaver;
 import com.qishui48.ascension.util.PacketUtils;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.damage.DamageTypes;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
@@ -18,6 +21,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(PlayerEntity.class)
@@ -86,7 +90,7 @@ public class PlayerDamageMixin {
                 }
             }
 
-            // === 技能：火焰感染 (Fire Infection) ===
+            // 火焰感染
             // 逻辑：玩家着火 + 受到攻击 -> 攻击者着火
             if (PacketUtils.isSkillActive(serverPlayer, "fire_infection")) {
                 if (player.isOnFire() && source.getAttacker() != null) {
@@ -100,7 +104,7 @@ public class PlayerDamageMixin {
                 }
             }
 
-            // === 缸中之脑：玻璃破碎 ===
+            // 缸中之脑：玻璃破碎
             // 只要受到伤害（amount > 0），就有概率碎
             if (amount > 0 && PacketUtils.isSkillActive(serverPlayer, "brain_in_a_jar")) {
                 ItemStack headStack = player.getEquippedStack(net.minecraft.entity.EquipmentSlot.HEAD);
@@ -120,6 +124,26 @@ public class PlayerDamageMixin {
 
                         // 刷新属性（移除护甲加成）
                         SkillEffectHandler.refreshAttributes(serverPlayer);
+                    }
+                }
+            }
+
+            // 不败金身：伤害免疫
+            IEntityDataSaver data = (IEntityDataSaver) serverPlayer;
+            if (data.getPersistentData().contains("invincible_damage_end")) {
+                long endTime = data.getPersistentData().getLong("invincible_damage_end");
+                if (serverPlayer.getWorld().getTime() < endTime) {
+                    // 检查伤害类型: 魔法、弹射物、爆炸
+                    boolean isMagic = source.isIn(net.minecraft.registry.tag.DamageTypeTags.WITCH_RESISTANT_TO) || source.isOf(DamageTypes.MAGIC) || source.isOf(DamageTypes.INDIRECT_MAGIC);
+                    boolean isProjectile = source.isIn(net.minecraft.registry.tag.DamageTypeTags.IS_PROJECTILE);
+                    boolean isExplosion = source.isIn(net.minecraft.registry.tag.DamageTypeTags.IS_EXPLOSION);
+
+                    if (isMagic || isProjectile || isExplosion) {
+                        // 播放一个清脆的“叮”声反馈
+                        serverPlayer.getWorld().playSound(null, serverPlayer.getX(), serverPlayer.getY(), serverPlayer.getZ(),
+                                SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.PLAYERS, 0.5f, 2.0f);
+                        cir.setReturnValue(false); // 免疫伤害
+                        return;
                     }
                 }
             }
@@ -161,6 +185,43 @@ public class PlayerDamageMixin {
                     // 满足“御剑飞行”解锁条件：生死时速
                     // 触发一个自定义统计数据，用于 UnlockCriterion
                     serverPlayer.getStatHandler().increaseStat(serverPlayer, Stats.CUSTOM.getOrCreateStat(Ascension.SURVIVE_ELYTRA_CRASH), 1);
+                }
+            }
+        }
+    }
+
+    @Inject(method = "applyDamage", at = @At("HEAD"))
+    private void onRadiantDefense(DamageSource source, float amount, CallbackInfo ci) {
+        LivingEntity self = (LivingEntity) (Object) this;
+        if (!(self instanceof ServerPlayerEntity player)) return;
+
+        // 检查攻击者是否为亡灵
+        if (source.getAttacker() instanceof LivingEntity attacker && attacker.getGroup() == net.minecraft.entity.EntityGroup.UNDEAD) {
+
+            // 检查技能是否激活 (radiant_damage_end)
+            IEntityDataSaver data = (IEntityDataSaver) player;
+            NbtCompound nbt = data.getPersistentData();
+
+            if (nbt.contains("radiant_damage_end")) {
+                long endTime = nbt.getLong("radiant_damage_end");
+                if (player.getWorld().getTime() < endTime) {
+
+                    // 检查等级 >= 2
+                    if (com.qishui48.ascension.util.PacketUtils.getSkillLevel(player, "radiant_avatar") >= 2) {
+                        // 给予 6颗心 (12点) 伤害吸收
+                        // 伤害吸收 IV (Amplifier 3) => 4 * (3+1) = 16点? 不对
+                        // 原版 Absorption 每级 +4点 (2心)。要 12点(6心) 需要 3级(Amplifier 2)
+                        player.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(
+                                net.minecraft.entity.effect.StatusEffects.ABSORPTION,
+                                100, // 5秒持续 (立刻获得，稍微持续一会以免瞬间消失)
+                                2,   // Amplifier 2 = Level 3 = 12点血 = 6心
+                                false, false, true
+                        ));
+
+                        // 播放音效
+                        player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
+                                SoundEvents.ITEM_SHIELD_BLOCK, SoundCategory.PLAYERS, 1.0f, 2.0f);
+                    }
                 }
             }
         }

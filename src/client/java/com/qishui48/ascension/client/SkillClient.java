@@ -1,4 +1,4 @@
-package com.qishui48.ascension.mixin.client;
+package com.qishui48.ascension.client;
 
 import com.qishui48.ascension.util.IEntityDataSaver;
 

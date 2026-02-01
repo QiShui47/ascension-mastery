@@ -26,10 +26,10 @@ public class MouseMixin {
         if (AscensionClient.altKey.isPressed()) {
             // 获取当前已解锁的槽位数
             IEntityDataSaver data = (IEntityDataSaver) client.player;
-            int masteryLevel = 0;
-            if (data.getPersistentData().contains("skill_levels")) {
-                masteryLevel = data.getPersistentData().getCompound("skill_levels").getInt("mastery");
-            }
+            int masteryLevel = 3;
+            //if (data.getPersistentData().contains("skill_levels")) {
+            //    masteryLevel = data.getPersistentData().getCompound("skill_levels").getInt("mastery");
+            //}
             int maxSlots = 2 + masteryLevel;
 
             // 获取当前选中的槽位

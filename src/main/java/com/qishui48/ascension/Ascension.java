@@ -1,5 +1,7 @@
 package com.qishui48.ascension;
 
+import com.qishui48.ascension.block.TemporaryGlowingBlock;
+import com.qishui48.ascension.block.entity.TemporaryGlowingBlockEntity;
 import com.qishui48.ascension.command.SetSkillCommand;
 import com.qishui48.ascension.command.SkillOpCommands;
 import com.qishui48.ascension.enchantment.LifeStealEnchantment;
@@ -13,6 +15,10 @@ import com.qishui48.ascension.util.PacketUtils;
 import com.qishui48.ascension.util.SkillCooldownManager;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
+import net.minecraft.block.AbstractBlock;
+import net.minecraft.block.Block;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentTarget;
 import net.minecraft.entity.EquipmentSlot;
@@ -37,6 +43,10 @@ public class Ascension implements ModInitializer {
 	public static Enchantment DEATH_STAR_CANNON;
 	public static SpecialBowEnchantment POCKET_GUARD;
 	public static SpecialBowEnchantment POCKET_CAT;
+	// 注册隐形发光方块
+	public static Block TEMPORARY_GLOWING_BLOCK;
+	public static BlockEntityType<TemporaryGlowingBlockEntity> TEMPORARY_GLOWING_BLOCK_ENTITY;
+
 	public static final Identifier PACKET_ID = new Identifier(MOD_ID, "sync_skill_data");
 	public static final Identifier UNLOCK_REQUEST_ID = new Identifier(MOD_ID, "request_unlock_skill");
 
@@ -71,6 +81,8 @@ public class Ascension implements ModInitializer {
 	public static final Identifier TAME_DOG_COUNT = new Identifier(MOD_ID, "tame_dog_count"); // 驯服狗狗
 	public static final Identifier DOG_KILL_MOB_COUNT = new Identifier(MOD_ID, "dog_kill_mob_count"); //狗狗出击
 	public static final Identifier EXPLORE_BASTION = new Identifier(MOD_ID, "explore_bastion"); // 探索不同的堡垒遗迹
+	public static final Identifier SURVIVE_EXPLOSION = new Identifier(MOD_ID, "survive_explosion"); //在爆炸中幸存
+	public static final Identifier KILL_GHAST_WITH_REFLECTION = new Identifier(MOD_ID, "kill_ghast_with_reflection"); //用火球反击恶魂
 
 	@Override
 	public void onInitialize() {
@@ -137,7 +149,16 @@ public class Ascension implements ModInitializer {
 		Registry.register(Registries.CUSTOM_STAT, TAME_DOG_COUNT, TAME_DOG_COUNT);
 		Registry.register(Registries.CUSTOM_STAT, DOG_KILL_MOB_COUNT, DOG_KILL_MOB_COUNT);
 		Registry.register(Registries.CUSTOM_STAT, EXPLORE_BASTION, EXPLORE_BASTION);
+		Registry.register(Registries.CUSTOM_STAT, SURVIVE_EXPLOSION, SURVIVE_EXPLOSION);
+		Registry.register(Registries.CUSTOM_STAT, KILL_GHAST_WITH_REFLECTION, KILL_GHAST_WITH_REFLECTION);
 		SkillRegistry.registerAll();
+
+		TEMPORARY_GLOWING_BLOCK = Registry.register(Registries.BLOCK, new Identifier(MOD_ID, "temporary_light"),
+				new TemporaryGlowingBlock(AbstractBlock.Settings.copy(Blocks.AIR).luminance(state -> 15).noCollision().dropsNothing()));
+
+		// 2. 注册 BlockEntity
+		TEMPORARY_GLOWING_BLOCK_ENTITY = Registry.register(Registries.BLOCK_ENTITY_TYPE, new Identifier(MOD_ID, "temporary_light_entity"),
+				BlockEntityType.Builder.create(TemporaryGlowingBlockEntity::new, TEMPORARY_GLOWING_BLOCK).build(null));
 
 		// 踏足新维度的事件
 		ModEvents.register();

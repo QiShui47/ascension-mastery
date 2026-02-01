@@ -356,12 +356,20 @@ public class ModMessages {
                         // 交换
                         // 简单处理：如果是同种物品，尝试堆叠；否则交换
                         if (ItemStack.canCombine(cursorStack, slotStack)) {
-                            // 堆叠逻辑 (省略，简单起见直接交换或者满了就不动)
-                            // 这里写简单交换：
-                            NbtCompound newSlotNbt = new NbtCompound();
-                            cursorStack.writeNbt(newSlotNbt);
-                            materials.set(slotIndex, newSlotNbt);
-                            player.currentScreenHandler.setCursorStack(slotStack);
+                            int space = slotStack.getMaxCount() - slotStack.getCount();
+                            if (space > 0) {
+                                int moveCount = Math.min(space, cursorStack.getCount());
+
+                                // 增加槽位物品数量
+                                slotStack.increment(moveCount);
+                                NbtCompound newSlotNbt = new NbtCompound();
+                                slotStack.writeNbt(newSlotNbt); // 更新 NBT 数据
+                                materials.set(slotIndex, newSlotNbt);
+
+                                // 减少鼠标物品数量
+                                cursorStack.decrement(moveCount);
+                                player.currentScreenHandler.setCursorStack(cursorStack);
+                            }
                         } else {
                             // 交换
                             NbtCompound newSlotNbt = new NbtCompound();
@@ -422,10 +430,10 @@ public class ModMessages {
         });
 
         // 中键减冷却
+        // 中键减冷却
         ServerPlayNetworking.registerGlobalReceiver(REDUCE_CD_REQUEST_ID, (server, player, handler, buf, responseSender) -> {
             int slotIndex = buf.readInt();
             server.execute(() -> {
-                // 获取材料
                 IEntityDataSaver data = (IEntityDataSaver) player;
                 NbtCompound nbt = data.getPersistentData();
                 NbtList materials = nbt.getList("casting_materials", 10);
@@ -434,63 +442,67 @@ public class ModMessages {
 
                 if (slotIndex >= materials.size()) return;
 
-                ItemStack stack = ItemStack.fromNbt(materials.getCompound(slotIndex));
+                ItemStack materialStack = ItemStack.fromNbt(materials.getCompound(slotIndex));
+                if (materialStack.isEmpty()) return;
 
-                // === [新增] 检查是否有技能需要冷却 ===
-                boolean needsCooldown = false;
-                for (int i = 0; i < activeSlots.size(); i++) {
-                    net.minecraft.nbt.NbtCompound s = activeSlots.getCompound(i);
-                    if (s.getLong("cooldown_end") > now && s.getInt("cooldown_total") > 0) {
-                        needsCooldown = true;
-                        break;
-                    }
-                }
+                boolean anyReduced = false; // 标记是否有技能成功减少了冷却
 
-                if (!needsCooldown) {
-                    player.sendMessage(Text.translatable("message.ascension.cooldown_full").formatted(Formatting.YELLOW), true);
-                    return; // 不消耗材料
-                }
-
-                // TODO: 在这里判断材料类型是否为“高级材料”
-                // 例如: if (!stack.isOf(Items.NETHER_STAR)) return;
-                if (stack.isEmpty()) return;
-
-                // 消耗 1 个
-                stack.decrement(1);
-                if (stack.isEmpty()) {
-                    materials.set(slotIndex, new NbtCompound());
-                } else {
-                    NbtCompound newNbt = new NbtCompound();
-                    stack.writeNbt(newNbt);
-                    materials.set(slotIndex, newNbt);
-                }
-
-                // === 减少所有技能 25% 冷却 ===
+                // === 1. 遍历所有主动技能槽 ===
                 for (int i = 0; i < activeSlots.size(); i++) {
                     NbtCompound slotNbt = activeSlots.getCompound(i);
                     long end = slotNbt.getLong("cooldown_end");
                     int total = slotNbt.getInt("cooldown_total");
+                    String skillId = slotNbt.getString("id");
 
-                    if (end > now && total > 0) {
-                        // [修改] 计算减少量：总时间的 25%
-                        long reduced = (long)(total * 0.25);
-                        long newEnd = end - reduced;
+                    // 检查是否在冷却中
+                    if (end > now && total > 0 && !skillId.isEmpty()) {
+                        Skill rawSkill = SkillRegistry.get(skillId);
 
-                        // 防止减过头 (不能小于当前时间)
-                        if (newEnd < now) newEnd = now;
+                        // === [修复] 核心判定：材料是否匹配？ ===
+                        if (rawSkill instanceof ActiveSkill activeSkill) {
+                            boolean isMatch = false;
+                            // 遍历该技能的所有合法耗材
+                            for (ActiveSkill.CastIngredient ingredient : activeSkill.ingredients) {
+                                if (ingredient.item == materialStack.getItem()) {
+                                    isMatch = true;
+                                    break;
+                                }
+                            }
 
-                        slotNbt.putLong("cooldown_end", newEnd);
-                        // 注意：cooldown_total 保持不变，这样进度条会突然跳跃，符合“加速”的视觉效果
+                            if (isMatch) {
+                                // 执行减 CD 逻辑
+                                long reduced = (long)(total * 0.25);
+                                long newEnd = end - reduced;
+                                if (newEnd < now) newEnd = now;
+
+                                slotNbt.putLong("cooldown_end", newEnd);
+                                anyReduced = true;
+                            }
+                        }
                     }
                 }
 
-                nbt.put("casting_materials", materials);
-                nbt.put("active_skill_slots", activeSlots);
-                PacketUtils.syncSkillData(player);
-                player.currentScreenHandler.syncState();
+                // === 2. 只有当至少有一个技能被加速时，才消耗材料 ===
+                if (anyReduced) {
+                    materialStack.decrement(1);
+                    if (materialStack.isEmpty()) {
+                        materials.set(slotIndex, new NbtCompound());
+                    } else {
+                        NbtCompound newNbt = new NbtCompound();
+                        materialStack.writeNbt(newNbt);
+                        materials.set(slotIndex, newNbt);
+                    }
 
-                // 反馈
-                player.sendMessage(Text.translatable("message.ascension.cooldown_reduced").formatted(Formatting.AQUA), true);
+                    nbt.put("casting_materials", materials);
+                    nbt.put("active_skill_slots", activeSlots);
+                    PacketUtils.syncSkillData(player);
+                    player.currentScreenHandler.syncState();
+
+                    player.sendMessage(Text.translatable("message.ascension.cooldown_reduced").formatted(Formatting.AQUA), true);
+                } else {
+                    // 没有技能需要用这个材料加速
+                    player.sendMessage(Text.translatable("message.ascension.cooldown_full").formatted(Formatting.YELLOW), true);
+                }
             });
         });
     }
