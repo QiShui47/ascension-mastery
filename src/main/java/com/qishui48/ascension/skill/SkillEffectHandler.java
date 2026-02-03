@@ -1,14 +1,32 @@
 package com.qishui48.ascension.skill;
 
+import com.qishui48.ascension.mixin.stats.AbstractFurnaceBlockEntityAccessor;
+import com.qishui48.ascension.util.IEntityDataSaver;
 import com.qishui48.ascension.util.PacketUtils;
+import net.minecraft.block.entity.AbstractFurnaceBlockEntity;
+import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.particle.ParticleTypes;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
+import net.minecraft.text.Text;
+import net.minecraft.util.math.ChunkPos;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.math.random.Random;
+import net.minecraft.world.GameRules;
+import net.minecraft.world.World;
+import net.minecraft.world.chunk.WorldChunk;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class SkillEffectHandler {
@@ -21,6 +39,7 @@ public class SkillEffectHandler {
     private static final UUID THERMAL_SPEED_ID = UUID.fromString("d4e5f6a1-0000-0000-0000-000000000004");
     private static final UUID THERMAL_DAMAGE_ID = UUID.fromString("e5f6a1b2-0000-0000-0000-000000000005");
     private static final java.util.UUID GLASS_ARMOR_ID = java.util.UUID.fromString("f6a1b2c3-0000-0000-0000-000000000006");
+    private static final UUID STEADFAST_ARMOR_ID = UUID.fromString("f7a1b2c3-0000-0000-0000-000000000007");
 
     private static final double HP_BONUS = 4.0;
 
@@ -119,7 +138,7 @@ public class SkillEffectHandler {
         }
     }
 
-    // === [新增] 糖分主理人：应用效果 ===
+    // 糖分主理人应用效果
     public static void applySugarMasterEffect(net.minecraft.server.network.ServerPlayerEntity player, net.minecraft.item.FoodComponent food) {
         if (food == null) return;
 
@@ -160,12 +179,198 @@ public class SkillEffectHandler {
         });
     }
 
+    // 斗转星移效果 //
+    // 静态变量记录剩余加速时间
+    private static int timeAccelerationTicks = 0;
+    private static int originalRandomTickSpeed = 3;
+    private static boolean isAccelerating = false;
+
+    // 激活方法
+    public static void activateTimeAcceleration(ServerWorld world, int duration) {
+        if (!isAccelerating) {
+            originalRandomTickSpeed = world.getGameRules().getInt(GameRules.RANDOM_TICK_SPEED);
+            world.getGameRules().get(GameRules.RANDOM_TICK_SPEED).set(30, world.getServer());
+            isAccelerating = true;
+        }
+        timeAccelerationTicks = Math.max(timeAccelerationTicks, duration);
+    }
+
+    private static void tickStarShift(MinecraftServer server) {
+        if (timeAccelerationTicks > 0) {
+            timeAccelerationTicks--;
+
+            // 1. 加速昼夜循环 (额外+9，凑齐10倍)
+            for (ServerWorld world : server.getWorlds()) {
+                world.setTimeOfDay(world.getTimeOfDay() + 9);
+            }
+
+            // 结束恢复
+            if (timeAccelerationTicks <= 0) {
+                isAccelerating = false;
+                ServerWorld overworld = server.getOverworld();
+                overworld.getGameRules().get(GameRules.RANDOM_TICK_SPEED).set(originalRandomTickSpeed, server);
+            }
+        }
+    }
+
+    public static void onServerTick(MinecraftServer server) {
+        tickStarShift(server);
+        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+            tickWraithWrath(player);
+            tickBlink(player);
+            tickSteadfast(player);
+        }
+    }
+
+    private static void tickWraithWrath(ServerPlayerEntity player) {
+        NbtCompound nbt = ((IEntityDataSaver)player).getPersistentData();
+        ActiveSkill skill = (ActiveSkill) SkillRegistry.get("wraith_wrath");
+        if (nbt.contains("wraith_charging_end")) {
+            long endTime = nbt.getLong("wraith_charging_end");
+            long now = player.getWorld().getTime();
+            if (now < endTime) {
+                if (now % 5 == 0) ((ServerWorld)player.getWorld()).spawnParticles(ParticleTypes.SCULK_SOUL, player.getX(), player.getY()+1, player.getZ(), 2, 0.3, 0.5, 0.3, 0.05);
+            } else {
+                nbt.remove("wraith_charging_end");
+                executeWraithDamage(player);
+                PacketUtils.consumeSkillCharge(player, skill, false);
+            }
+        }
+    }
+
+    private static void executeWraithDamage(ServerPlayerEntity player) {
+        NbtCompound nbt = ((IEntityDataSaver)player).getPersistentData();
+        int level = PacketUtils.getSkillLevel(player, "wraith_wrath");
+        float totalDamage = (level == 1 ? 30f : level == 2 ? 40f : 50f) * 2;
+        double range = 36.0;
+
+        //检查增幅标记
+        if (nbt.getBoolean("wraith_damage_boost")) {
+            totalDamage *= 2.0f; // 伤害翻倍
+            nbt.remove("wraith_damage_boost"); // 清除标记
+        }
+
+        List<LivingEntity> targets = new ArrayList<>();
+        // 获取玩家视线向量
+        Vec3d lookVec = player.getRotationVector();
+        Vec3d playerPos = player.getEyePos();
+
+        player.getWorld().getEntitiesByClass(LivingEntity.class, player.getBoundingBox().expand(range),
+                e -> e != player && e.isAlive() && !e.isTeammate(player) && !e.hasStatusEffect(StatusEffects.INVISIBILITY)
+        ).forEach(e -> {
+            // 1. 距离检测
+            if (e.distanceTo(player) > range) return;
+            // 2. 障碍物检测 (Raycast)
+            if (!player.canSee(e)) return;
+
+            // 3. 视野角度检测
+            // 计算 "玩家->怪物" 的方向向量
+            Vec3d toTargetVec = e.getPos().add(0, e.getHeight()/2, 0).subtract(playerPos).normalize();
+            // 计算点积。值 > 0 表示前方，> 0.5 表示前方60度以内。
+            // 这里我们设置 0.1，保证只打得到的 "视野内" 的怪
+            if (lookVec.dotProduct(toTargetVec) > 0.1) {
+                targets.add(e);
+            }
+        });
+
+        if (targets.isEmpty()) {
+            player.sendMessage(Text.translatable("message.ascension.wraith_no_target"), true);
+            return;
+        }
+
+        Random rand = player.getRandom();
+        double totalWeight = 0;
+        double[] weights = new double[targets.size()];
+        for(int i=0; i<targets.size(); i++) { weights[i] = rand.nextDouble(); totalWeight += weights[i]; }
+
+        for (int i=0; i<targets.size(); i++) {
+            float dmg = (float)((weights[i]/totalWeight) * totalDamage);
+            if(dmg < 1.0f) dmg = 1.0f;
+            targets.get(i).damage(player.getDamageSources().magic(), dmg);
+            ((ServerWorld)player.getWorld()).spawnParticles(ParticleTypes.SCULK_SOUL, targets.get(i).getX(), targets.get(i).getBodyY(0.5), targets.get(i).getZ(), 10, 0.2, 0.2, 0.2, 0.1);
+        }
+        player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ENTITY_WARDEN_SONIC_BOOM, SoundCategory.PLAYERS, 1.0f, 1.0f);
+    }
+
     public static void onSkillUnlocked(ServerPlayerEntity player, String skillId) {
         player.playSound(SoundEvents.ENTITY_PLAYER_LEVELUP, SoundCategory.PLAYERS, 1.0f, 2.0f);
 
         if (skillId.equals("health_boost")) {
             player.addStatusEffect(new StatusEffectInstance(StatusEffects.REGENERATION, 100, 2));
             player.playSound(SoundEvents.ENTITY_GENERIC_DRINK, SoundCategory.PLAYERS, 0.8f, 0.8f);
+        }
+    }
+
+    //  闪现回溯 Tick 逻辑
+    private static void tickBlink(ServerPlayerEntity player) {
+        NbtCompound nbt = ((IEntityDataSaver) player).getPersistentData();
+        // 检查是否存在回溯标记
+        if (nbt.contains("blink_recall_deadline")) {
+            long deadline = nbt.getLong("blink_recall_deadline");
+            // 如果超时
+            if (player.getWorld().getTime() > deadline) {
+                // 清除回溯点
+                nbt.remove("blink_recall_deadline");
+                nbt.remove("blink_recall_x");
+                nbt.remove("blink_recall_y");
+                nbt.remove("blink_recall_z");
+                nbt.remove("blink_recall_dim");
+
+                // 窗口期结束，触发次要冷却
+                // 使用 true 表示次要效果 (Secondary)
+                Skill rawSkill = SkillRegistry.get("blink");
+                if (rawSkill instanceof ActiveSkill activeSkill) {
+                    // 这会正确扣除充能，并根据是否已经在冷却来决定是立即冷却还是入队
+                    PacketUtils.consumeSkillCharge(player, activeSkill, true);
+                }
+
+                // 同步数据以移除进度条
+                PacketUtils.syncSkillData(player);
+            }
+        }
+    }
+
+    // 岿然不动逻辑
+    private static void tickSteadfast(ServerPlayerEntity player) {
+        // 每秒更新一次护甲值 (20 ticks)，过于频繁没有必要且消耗性能
+        if (player.age % 20 == 0) {
+            updateSteadfastArmor(player);
+        }
+    }
+
+    public static void updateSteadfastArmor(ServerPlayerEntity player) {
+        IEntityDataSaver data = (IEntityDataSaver) player;
+        NbtCompound nbt = data.getPersistentData();
+        var armorAttr = player.getAttributeInstance(EntityAttributes.GENERIC_ARMOR);
+        if (armorAttr == null) return;
+
+        // 1. 清理旧修饰符 (无论是否结束，都要移除旧的以便添加新的数值)
+        armorAttr.removeModifier(STEADFAST_ARMOR_ID);
+
+        // 2. 检查是否处于激活状态
+        if (nbt.contains("steadfast_start_time")) {
+            long startTime = nbt.getLong("steadfast_start_time");
+            long now = player.getWorld().getTime();
+
+            // 计算经过秒数
+            double secondsElapsed = (now - startTime) / 20.0;
+
+            // 获取技能等级决定衰减速率
+            int level = PacketUtils.getSkillLevel(player, "steadfast");
+            double decayRate = (level >= 3) ? 1.0 : 2.0;
+
+            // 计算当前护甲: 初始 30 - (时间 * 速率)
+            double currentArmor = 30.0 - (secondsElapsed * decayRate);
+
+            if (currentArmor > 0) {
+                // 应用新护甲
+                armorAttr.addTemporaryModifier(new EntityAttributeModifier(
+                        STEADFAST_ARMOR_ID, "Steadfast Armor", currentArmor, EntityAttributeModifier.Operation.ADDITION));
+            } else {
+                // 衰减至 0，移除状态
+                nbt.remove("steadfast_start_time");
+                // 此时 removeModifier 已经在上面执行过了，所以属性被清除
+            }
         }
     }
 }

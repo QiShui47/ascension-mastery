@@ -860,15 +860,22 @@ public class SkillTreeScreen extends Screen {
             int displayLevel = isUnlocked ? level : 1;
 
             int maxCharges = activeSkill.getMaxCharges(displayLevel);
-            double cooldownSeconds = activeSkill.getCooldown(displayLevel) / 20.0;
-            String cdText = (cooldownSeconds % 1 == 0) ? String.format("%.0f", cooldownSeconds) : String.format("%.1f", cooldownSeconds);
+            double cooldownSeconds = activeSkill.getPrimaryCooldown(displayLevel) / 20.0;
+            double secondaryCooldownSeconds = activeSkill.getSecondaryCooldown(displayLevel) / 20.0;
+            // Primary
+            String cdPText = (cooldownSeconds % 1 == 0) ? String.format("%.0f", cooldownSeconds) : String.format("%.1f", cooldownSeconds);
+            // Secondary
+            String cdSText = (secondaryCooldownSeconds % 1 == 0) ? String.format("%.0f", secondaryCooldownSeconds) : String.format("%.1f", secondaryCooldownSeconds);
 
             // 充能
             tooltip.add(Text.translatable("gui.ascension.tooltip.charges", maxCharges)
                     .formatted(Formatting.LIGHT_PURPLE).asOrderedText());
             // 冷却
-            tooltip.add(Text.translatable("gui.ascension.tooltip.cooldown", cdText)
+            tooltip.add(Text.translatable("gui.ascension.tooltip.cooldown", cdPText)
                     .formatted(Formatting.LIGHT_PURPLE).asOrderedText());
+            // 次要效果冷却
+            tooltip.add(Text.translatable("gui.ascension.tooltip.secondary_cooldown", cdSText)
+                    .formatted(Formatting.GRAY).asOrderedText());
         }
 
         // 7. 升级预览 (Upgrade Preview)

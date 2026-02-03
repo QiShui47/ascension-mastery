@@ -9,14 +9,9 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class ModMessages {
     public static final Identifier UNLOCK_REQUEST_ID = new Identifier(Ascension.MOD_ID, "request_unlock_skill");
@@ -280,7 +275,7 @@ public class ModMessages {
                 long currentTime = player.getWorld().getTime();
                 long cooldownEnd = slotNbt.getLong("cooldown_end");
 
-                // === [新增] 懒加载恢复逻辑：如果冷却已结束且充能为0，补满充能 ===
+                // 懒加载恢复逻辑：如果冷却已结束且充能为0，补满充能
                 int currentCharges = slotNbt.getInt("charges");
                 Skill rawSkill = SkillRegistry.get(skillId);
                 if (!(rawSkill instanceof ActiveSkill)) return;
@@ -301,23 +296,6 @@ public class ModMessages {
 
                 // 尝试执行技能
                 boolean success = activeSkill.cast(player, isSecondary);
-
-                if (success) {
-                    // 只有成功了才扣除充能
-                    currentCharges--;
-                    slotNbt.putInt("charges", currentCharges);
-
-                    // 触发冷却计时逻辑 (保持不变)
-                    long now = player.getWorld().getTime();
-                    if (slotNbt.getLong("cooldown_end") <= now) {
-                        int cd = activeSkill.getCooldown(level);
-                        slotNbt.putLong("cooldown_end", now + cd);
-                        slotNbt.putInt("cooldown_total", cd);
-                    }
-
-                    nbt.put("active_skill_slots", activeSlots);
-                    PacketUtils.syncSkillData(player);
-                }
 
                 nbt.put("active_skill_slots", activeSlots);
                 PacketUtils.syncSkillData(player);
@@ -406,7 +384,7 @@ public class ModMessages {
                     String skillId = slotNbt.getString("id");
 
                     if (!skillId.isEmpty()) {
-                        // === [新增] 检查充能是否满 ===
+                        // 检查充能是否满
                         int charges = slotNbt.getInt("charges");
                         int level = PacketUtils.getSkillLevel(player, skillId);
                         Skill skill = SkillRegistry.get(skillId);
@@ -429,7 +407,6 @@ public class ModMessages {
             });
         });
 
-        // 中键减冷却
         // 中键减冷却
         ServerPlayNetworking.registerGlobalReceiver(REDUCE_CD_REQUEST_ID, (server, player, handler, buf, responseSender) -> {
             int slotIndex = buf.readInt();
@@ -458,7 +435,7 @@ public class ModMessages {
                     if (end > now && total > 0 && !skillId.isEmpty()) {
                         Skill rawSkill = SkillRegistry.get(skillId);
 
-                        // === [修复] 核心判定：材料是否匹配？ ===
+                        // === 核心判定：材料是否匹配？ ===
                         if (rawSkill instanceof ActiveSkill activeSkill) {
                             boolean isMatch = false;
                             // 遍历该技能的所有合法耗材

@@ -8,6 +8,7 @@ import java.util.List;
 
 public class ActiveSkill extends Skill {
     private final int[] cooldowns;
+    private final int[] secondaryCooldowns; // 次要技能冷却时间 (Ticks)
     private final int[] maxCharges;
     public final List<CastIngredient> ingredients = new ArrayList<>();
 
@@ -20,15 +21,16 @@ public class ActiveSkill extends Skill {
 
     // 构造函数
     // 注意参数顺序调整为：maxCharges, cooldowns, costs
-    public ActiveSkill(String id, Item iconItem, int tier, String parentId, int maxLevel, int[] maxCharges, int[] cooldowns, int... costs) {
+    public ActiveSkill(String id, Item iconItem, int tier, String parentId, int maxLevel, int[] maxCharges, int[] cooldowns, int[] secondaryCooldowns, int... costs) {
         super(id, iconItem, tier, parentId, maxLevel, costs);
         this.cooldowns = cooldowns;
+        this.secondaryCooldowns = secondaryCooldowns;
         this.maxCharges = maxCharges;
     }
 
     // [新增] 辅助构造函数（如果想用固定冷却）
-    public ActiveSkill(String id, Item iconItem, int tier, String parentId, int maxLevel, int maxCharges, int baseCooldown, int... costs) {
-        this(id, iconItem, tier, parentId, maxLevel, new int[]{maxCharges}, new int[]{baseCooldown}, costs);
+    public ActiveSkill(String id, Item iconItem, int tier, String parentId, int maxLevel, int maxCharges, int cooldowns, int secondaryCooldowns, int... costs) {
+        this(id, iconItem, tier, parentId, maxLevel, new int[]{maxCharges}, new int[]{cooldowns}, new int[]{secondaryCooldowns}, costs);
     }
 
     // 链式调用：添加施法材料
@@ -37,12 +39,19 @@ public class ActiveSkill extends Skill {
         return this;
     }
 
-    // 获取冷却时间 (支持等级缩减逻辑，目前简单实现为满级缩减)
-    public int getCooldown(int level) {
+    // 获取主要效果冷却时间
+    public int getPrimaryCooldown(int level) {
         if (level <= 0) return 0;
         // 如果配置了足够的等级冷却，取对应值；否则取最后一个（满级）
         int index = Math.min(level - 1, cooldowns.length - 1);
         return cooldowns[index];
+    }
+
+    // 获取次要效果冷却时间
+    public int getSecondaryCooldown(int level) {
+        if (level <= 0) return 0;
+        int index = Math.min(level - 1, secondaryCooldowns.length - 1);
+        return secondaryCooldowns[index];
     }
 
     public int getMaxCharges(int level) {
@@ -51,13 +60,13 @@ public class ActiveSkill extends Skill {
         return this.maxCharges[index];
     }
 
-    // === [新增] 设置行为 (链式调用) ===
+    // === 设置行为 (链式调用) ===
     public ActiveSkill setBehavior(SkillBehavior behavior) {
         this.behavior = behavior;
         return this;
     }
 
-    // === [新增] 执行行为 ===
+    // === 执行行为 ===
     public boolean cast(ServerPlayerEntity player, boolean isSecondary) {
         if (this.behavior != null) {
             return this.behavior.execute(player, this, isSecondary);

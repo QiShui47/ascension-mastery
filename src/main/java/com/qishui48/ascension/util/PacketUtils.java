@@ -1,14 +1,13 @@
 package com.qishui48.ascension.util;
 
 import com.qishui48.ascension.Ascension;
-import com.qishui48.ascension.skill.Skill;
-import com.qishui48.ascension.skill.SkillEffectHandler;
-import com.qishui48.ascension.skill.SkillRegistry;
-import com.qishui48.ascension.skill.UnlockCriterion;
+import com.qishui48.ascension.skill.*;
 import com.qishui48.ascension.network.ModMessages;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.NbtList;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
@@ -381,6 +380,83 @@ public class PacketUtils {
         player.sendMessage(Text.translatable("message.ascension.reset_success", cost).formatted(Formatting.GREEN), true);
         player.playSound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.PLAYERS, 1.0f, 1.0f);
     }
+
+    // 通用方法：使用冷却遮罩来显示一个临时的倒计时/蓄力进度
+    // 适用于不想使用下方耐久条，而是直接在图标上转圈圈的场景
+    public static void startCooldownOverlayVisual(ServerPlayerEntity player, String skillId, int ticks) {
+        // 其实底层还是设置冷却，但封装后语义更清晰
+        setSkillCooldown(player, skillId, ticks);
+    }
+
+    // === 消耗技能充能并应用冷却队列 (使用默认冷却) ===
+    public static void consumeSkillCharge(ServerPlayerEntity player, ActiveSkill skill, boolean isSecondary) {
+        consumeSkillCharge(player, skill, isSecondary, -1);
+    }
+
+    // 核心方法：消耗技能充能并应用冷却队列
+    public static void consumeSkillCharge(ServerPlayerEntity player, ActiveSkill skill, boolean isSecondary, int overrideCooldown) {
+        IEntityDataSaver dataSaver = (IEntityDataSaver) player;
+        NbtCompound nbt = dataSaver.getPersistentData();
+        if (!nbt.contains("active_skill_slots", 9)) return;
+        NbtList activeSlots = nbt.getList("active_skill_slots", 10);
+
+        int level = getSkillLevel(player, skill.id);
+        int cooldownTicks;
+        if (overrideCooldown > 0) {
+            cooldownTicks = overrideCooldown;
+        } else {
+            cooldownTicks = isSecondary ? skill.getSecondaryCooldown(level) : skill.getPrimaryCooldown(level);
+        }
+
+        boolean found = false;
+        long currentTime = player.getWorld().getTime();
+
+        for (int i = 0; i < activeSlots.size(); i++) {
+            NbtCompound slotNbt = activeSlots.getCompound(i);
+            if (slotNbt.getString("id").equals(skill.id)) {
+                // 1. 扣除充能
+                int currentCharges = slotNbt.getInt("charges");
+                if (currentCharges > 0) {
+                    currentCharges--;
+                    slotNbt.putInt("charges", currentCharges);
+                }
+
+                // 2. 冷却逻辑
+                long cooldownEnd = slotNbt.getLong("cooldown_end");
+
+                // 如果当前已经在冷却中（cooldownEnd > currentTime），则将新的冷却时间加入队列
+                if (cooldownEnd > currentTime) {
+                    // 获取或创建队列
+                    // NBT没有直接的IntList，我们用IntArray或List<Int>，这里用IntList方便追加
+                    // 为了方便操作，我们用 nbt.getIntArray 的变体，但 NbtList 更灵活
+                    NbtList queue;
+                    if (slotNbt.contains("cooldown_queue", NbtElement.LIST_TYPE)) {
+                        queue = slotNbt.getList("cooldown_queue", NbtElement.INT_TYPE);
+                    } else {
+                        queue = new NbtList();
+                    }
+
+                    // 将本次消耗对应的冷却时间加入队列
+                    queue.add(net.minecraft.nbt.NbtInt.of(cooldownTicks));
+                    slotNbt.put("cooldown_queue", queue);
+
+                } else {
+                    // 如果当前没有冷却，直接开始冷却
+                    slotNbt.putLong("cooldown_end", currentTime + cooldownTicks);
+                    slotNbt.putInt("cooldown_total", cooldownTicks);
+                }
+
+                found = true;
+                break;
+            }
+        }
+
+        if (found) {
+            nbt.put("active_skill_slots", activeSlots);
+            syncSkillData(player);
+        }
+    }
+
     /**
      * 获取存储在玩家身上的通用整型数据
      * @param player 玩家实体

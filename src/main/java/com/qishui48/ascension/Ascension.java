@@ -15,6 +15,7 @@ import com.qishui48.ascension.util.PacketUtils;
 import com.qishui48.ascension.util.SkillCooldownManager;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.block.AbstractBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
@@ -83,6 +84,7 @@ public class Ascension implements ModInitializer {
 	public static final Identifier EXPLORE_BASTION = new Identifier(MOD_ID, "explore_bastion"); // 探索不同的堡垒遗迹
 	public static final Identifier SURVIVE_EXPLOSION = new Identifier(MOD_ID, "survive_explosion"); //在爆炸中幸存
 	public static final Identifier KILL_GHAST_WITH_REFLECTION = new Identifier(MOD_ID, "kill_ghast_with_reflection"); //用火球反击恶魂
+	public static final Identifier CRAFT_CLOCK_END = new Identifier(MOD_ID, "craft_clock_end"); // 在末地合成时钟
 
 	@Override
 	public void onInitialize() {
@@ -151,6 +153,7 @@ public class Ascension implements ModInitializer {
 		Registry.register(Registries.CUSTOM_STAT, EXPLORE_BASTION, EXPLORE_BASTION);
 		Registry.register(Registries.CUSTOM_STAT, SURVIVE_EXPLOSION, SURVIVE_EXPLOSION);
 		Registry.register(Registries.CUSTOM_STAT, KILL_GHAST_WITH_REFLECTION, KILL_GHAST_WITH_REFLECTION);
+		Registry.register(Registries.CUSTOM_STAT, CRAFT_CLOCK_END, CRAFT_CLOCK_END);
 		SkillRegistry.registerAll();
 
 		TEMPORARY_GLOWING_BLOCK = Registry.register(Registries.BLOCK, new Identifier(MOD_ID, "temporary_light"),
@@ -168,6 +171,9 @@ public class Ascension implements ModInitializer {
 
 		// 注册冷却与充能逻辑
 		SkillCooldownManager.register();
+
+		// 注册斗转星移-时间加速事件
+		ServerTickEvents.END_SERVER_TICK.register(SkillEffectHandler::onServerTick);
 
 		// 注册登录同步事件 - 玩家加入服务器时
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {

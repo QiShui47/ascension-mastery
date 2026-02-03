@@ -103,7 +103,7 @@ public class SkillRegistry {
                 .addUpgradeCriterion(4, new UnlockCriterion(Stats.CUSTOM, Ascension.EXPLORE_BASTION, 2, "criterion.ascension.explore_bastions")));
 
         // 火焰抵抗
-        register(new Skill("fire_resistance", Items.MAGMA_CREAM, 2, "zhu_rong", 2, 15, 25)
+        register(new Skill("fire_resistance", Items.POTION, 2, "zhu_rong", 2, 15, 25)
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.BREW_FIRE_RES_POTION, 1, "criterion.ascension.brew_fire_res")));
 
         // 火焰感染
@@ -221,6 +221,7 @@ public class SkillRegistry {
                 3,
                 new int[]{1, 2, 2}, // maxCharges
                 new int[]{1200, 1200, 900}, // 冷却
+                new int[]{100, 100, 100},
                 10, 10, 10 // costs
         );
         thunderClap.addIngredient(Items.COPPER_INGOT, 1, false, 0)
@@ -238,6 +239,7 @@ public class SkillRegistry {
                 4, // Max Level
                 new int[]{1, 2, 2, 3}, // Charges: 1, 2, 2, 3
                 new int[]{400, 400, 400, 400}, // Cooldown: 20s
+                new int[]{100, 100, 100, 100},
                 10, 10, 10, 10 // Costs
         );
         blink.addIngredient(Items.COPPER_INGOT, 1, false, 0)
@@ -254,6 +256,7 @@ public class SkillRegistry {
                 2, // Max Level
                 new int[]{2, 2}, // Charges: 都是2次
                 new int[]{1200, 900}, // Cooldown: Lv1=60s(1200t), Lv2=45s(900t)
+                new int[]{1200, 900},
                 10, 10 // Costs
         );
         invincibleBody.addIngredient(Items.COPPER_INGOT, 1, false, 0)
@@ -271,6 +274,7 @@ public class SkillRegistry {
                 3,
                 new int[]{1, 1, 1}, // 最大充能 1 次
                 new int[]{400, 400, 400}, // 基础冷却 20s
+                new int[]{1200, 1200, 1200},
                 10, 10, 10 // 消耗
         );
         dragonFlame.addIngredient(Items.COPPER_INGOT, 1, false, 0);
@@ -283,20 +287,72 @@ public class SkillRegistry {
         // 光耀化身 (Radiant Avatar)
         ActiveSkill radiantAvatar = new ActiveSkill(
                 "radiant_avatar",
-                Items.NETHER_STAR, // 图标
-                3, // Tier (雷霆万钧是3，这个也是3或4，父节点是 thunder_clap)
+                Items.NETHER_STAR,
+                3,
                 "thunder_clap",
                 2, // Max Level
                 new int[]{1, 1}, // Charges
                 new int[]{900, 900}, // Cooldown: 45s
+                new int[]{900, 900},
                 20, 30 // Costs
         );
         radiantAvatar.addIngredient(Items.BLAZE_ROD, 3, false, 0);
         radiantAvatar.addCriterion(new UnlockCriterion("undead_type_count", 8, "criterion.ascension.kill_undead_types"));
         radiantAvatar.addUpgradeCriterion(2, new UnlockCriterion(Stats.PICKED_UP, Items.NETHER_STAR, 1, "criterion.ascension.obtain_nether_star"));
-
         radiantAvatar.setBehavior(SkillActionHandler::executeRadiantAvatar);
         register(radiantAvatar);
+
+        // 斗转星移 (Star Shift)
+        ActiveSkill starShift = new ActiveSkill(
+                "star_shift",
+                Items.CLOCK,
+                2, // Tier 2
+                "miscellaneous", // 父节点
+                1, // Max Level 1
+                1, // Max Charges 1
+                300 * 20, // Base Cooldown 300s (6000 ticks) - 这里填默认值，实际会根据材料动态调整
+                600,
+                10 // Cost
+        );
+        starShift.addIngredient(Items.COPPER_INGOT, 1, false, 0);
+        starShift.addIngredient(Items.DIAMOND, 1, true, 0); // bonusEffect 在这里主要用于标记，具体数值在 execute 里硬编码处理
+        starShift.addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.CRAFT_CLOCK_END, 1, "criterion.ascension.craft_clock_in_end"));
+        starShift.setBehavior(SkillActionHandler::executeStarShift);
+        register(starShift);
+
+        // 怨灵之怒 (Wraith's Wrath)
+        ActiveSkill wraithWrath = new ActiveSkill(
+                "wraith_wrath",
+                Items.SKELETON_SKULL,
+                4, "bamboo_cutting",
+                3,
+                new int[]{1, 1, 2},
+                new int[]{1200, 1200, 1200},
+                new int[]{100, 100, 100},
+                10, 15, 20
+        );
+        wraithWrath.addIngredient(Items.COPPER_INGOT, 1, false, 0);
+        wraithWrath.addIngredient(Items.TIPPED_ARROW, 1, true, 1);
+        wraithWrath.setBehavior(SkillActionHandler::executeWraithWrath);
+        register(wraithWrath);
+
+        // 岿然不动 (Steadfast)
+        ActiveSkill steadfast = new ActiveSkill(
+                "steadfast",
+                Items.SHIELD,
+                5, // Tier 5 (基于父节点 Tier 4)
+                "health_boost", // 父节点
+                3, // Max Level
+                new int[]{1, 2, 2}, // Charges
+                new int[]{1800, 1800, 1800}, // 90s (1800 ticks)
+                new int[]{900, 900, 900}, // 45s (900 ticks)
+                10, 10, 10
+        );
+        steadfast.addIngredient(Items.COPPER_INGOT, 1, false, 0);
+        steadfast.addIngredient(Items.GOLD_INGOT, 1, true, 1); // bonusEffect=1 表示金锭标记，用于逻辑判断
+        steadfast.addCriterion(new UnlockCriterion(Stats.CRAFTED, Items.DIAMOND_LEGGINGS, 1, "criterion.ascension.craft_diamond_leggings"));
+        steadfast.setBehavior(SkillActionHandler::executeSteadfast);
+        register(steadfast);
 
         // 计算布局
         calculateLayout();

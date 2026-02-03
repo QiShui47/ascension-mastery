@@ -5,11 +5,19 @@ import com.qishui48.ascension.util.MotionJumpUtils;
 import com.qishui48.ascension.util.PacketUtils;
 import com.qishui48.ascension.util.SkillSoundHandler;
 import net.minecraft.entity.EntityType;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.entity.projectile.ProjectileEntity;
+import net.minecraft.entity.projectile.ProjectileUtil;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
+import net.minecraft.potion.Potion;
+import net.minecraft.potion.PotionUtil;
+import net.minecraft.potion.Potions;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
@@ -18,13 +26,16 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.RaycastContext;
 import net.minecraft.world.World;
 
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -82,7 +93,7 @@ public class SkillActionHandler {
         if (level <= 0) return false;
 
         if (isSecondary) {
-            PacketUtils.setSkillCooldown(player, skill.id, 100);
+            PacketUtils.consumeSkillCharge(player, skill, true);
             World world = player.getWorld();
             net.minecraft.entity.LightningEntity lightning = EntityType.LIGHTNING_BOLT.create(world);
             if (lightning != null) {
@@ -100,7 +111,8 @@ public class SkillActionHandler {
             return false;
         }
 
-        consumeMaterial(player, usedIngredient); // 消耗
+        consumeMaterial(player, usedIngredient); // 消耗材料
+        PacketUtils.consumeSkillCharge(player, skill, false); //消耗充能并添加冷却事件进入队列
 
         int lightningCount = 1 + (level - 1) * 2;
         // 使用 usedIngredient 判断加成
@@ -149,33 +161,104 @@ public class SkillActionHandler {
         if (level <= 0) return false;
 
         World world = player.getWorld();
+        IEntityDataSaver data = (IEntityDataSaver) player;
+        NbtCompound nbt = data.getPersistentData();
 
-        if (isSecondary) {
-            for (int i = 0; i < 10; i++) {
-                double dx = (world.random.nextDouble() - 0.5) * 9.0;
-                double dy = (world.random.nextDouble() - 0.5) * 9.0;
-                double dz = (world.random.nextDouble() - 0.5) * 9.0;
-                BlockPos targetPos = BlockPos.ofFloored(player.getX() + dx, player.getY() + dy, player.getZ() + dz);
-
-                if (canTeleportTo(world, targetPos)) {
-                    performTeleport(player, targetPos.getX() + 0.5, targetPos.getY(), targetPos.getZ() + 0.5);
-                    PacketUtils.setSkillCooldown(player, skill.id, 100);
-                    return true;
+        // 获取当前槽位的充能数，用于判断
+        int currentCharges = 0;
+        if (nbt.contains("active_skill_slots", 9)) {
+            NbtList slots = nbt.getList("active_skill_slots", 10);
+            for(int i=0; i<slots.size(); i++) {
+                if(slots.getCompound(i).getString("id").equals(skill.id)) {
+                    currentCharges = slots.getCompound(i).getInt("charges");
+                    break;
                 }
             }
-            player.sendMessage(Text.translatable("message.ascension.blink_fail").formatted(Formatting.RED), true);
-            return false;
+        }
+
+        if (isSecondary) {
+            long now = world.getTime();
+
+            // 检查是否处于 "回溯窗口期"
+            if (nbt.contains("blink_recall_deadline")) {
+                // === 触发回溯 (第二次按键) ===
+                double x = nbt.getDouble("blink_recall_x");
+                double y = nbt.getDouble("blink_recall_y");
+                double z = nbt.getDouble("blink_recall_z");
+                String dim = nbt.getString("blink_recall_dim");
+
+                if (world.getRegistryKey().getValue().toString().equals(dim)) {
+                    performTeleport(player, x, y, z);
+                    // 回溯成功后清空速度矢量
+                    player.setVelocity(0, 0, 0);
+                    player.velocityModified = true;
+                    // 重置掉落距离以防摔死
+                    player.fallDistance = 0;
+                    player.sendMessage(Text.translatable("message.ascension.blink_recall").formatted(Formatting.LIGHT_PURPLE), true);
+                } else {
+                    player.sendMessage(Text.translatable("message.ascension.blink_dim_mismatch").formatted(Formatting.RED), true);
+                }
+
+                // 清除回溯数据
+                nbt.remove("blink_recall_deadline");
+                nbt.remove("blink_recall_x");
+                nbt.remove("blink_recall_y");
+                nbt.remove("blink_recall_z");
+                nbt.remove("blink_recall_dim");
+
+                // 此时才真正消耗充能，并进入次要冷却
+                PacketUtils.consumeSkillCharge(player, skill, true);
+
+            } else {
+                // === 标记位置 (第一次按键) ===
+                // [检查] 如果充能数 < 1 (虽然没到消耗阶段，但必须有1个充能打底)，不允许使用
+                if (currentCharges < 1) {
+                    // 实际上 activeSkill.execute 外部可能已经防住了 0 充能，
+                    // 但这里是双重保险
+                    return false;
+                }
+
+                // 记录坐标
+                nbt.putDouble("blink_recall_x", player.getX());
+                nbt.putDouble("blink_recall_y", player.getY());
+                nbt.putDouble("blink_recall_z", player.getZ());
+                nbt.putString("blink_recall_dim", world.getRegistryKey().getValue().toString());
+
+                // 设置8秒窗口
+                int windowTicks = 160;
+                long deadline = now + windowTicks;
+                nbt.putLong("blink_recall_deadline", deadline);
+
+                // 显示耐久条
+                updateSkillSlotBus(player, skill.id, windowTicks, deadline);
+
+                player.playSound(SoundEvents.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.PLAYERS, 0.5f, 1.5f);
+                player.sendMessage(Text.translatable("message.ascension.blink_mark").formatted(Formatting.LIGHT_PURPLE), true);
+
+                // [注意] 此处不调用 consumeSkillCharge，不消耗充能，也不进冷却
+                // 仅仅是开启了窗口期
+            }
+            PacketUtils.syncSkillData(player);
+            return true;
+        }
+
+        // [关键逻辑] 如果正在回溯窗口期 (blink_recall_deadline 存在)
+        if (nbt.contains("blink_recall_deadline")) {
+            // 此时必须保证充能 > 1，因为要留 1 个给次要效果结算
+            if (currentCharges <= 1) {
+                //player.sendMessage(Text.of("§c能量不足以维持回溯锚点！"), true);
+                return false;
+            }
         }
 
         // === 使用提取的方法 ===
         ActiveSkill.CastIngredient usedIngredient = findMaterial(player, skill);
-
         if (usedIngredient == null && !player.isCreative()) {
             player.sendMessage(Text.translatable("message.ascension.no_material").formatted(Formatting.RED), true);
             return false;
         }
-
         consumeMaterial(player, usedIngredient); // 消耗
+        PacketUtils.consumeSkillCharge(player, skill, false);
 
         double range = (level >= 3) ? 18.0 : 12.0;
         // 判断是否使用了强化材料 (末影珍珠)
@@ -277,6 +360,7 @@ public class SkillActionHandler {
             return false;
         }
         consumeMaterial(player, usedIngredient);
+        PacketUtils.consumeSkillCharge(player, skill, isSecondary);
 
         // 2. 计算时间
         int baseDuration = 80;
@@ -308,7 +392,7 @@ public class SkillActionHandler {
         return true;
     }
 
-    // === 新增：辅助方法，更新槽位总线数据 ===
+    // 辅助方法，更新槽位总线数据
     public static void updateSkillSlotBus(ServerPlayerEntity player, String skillId, int totalDuration, long endTime) {
         IEntityDataSaver data = (IEntityDataSaver) player;
         NbtCompound nbt = data.getPersistentData();
@@ -353,8 +437,8 @@ public class SkillActionHandler {
                 consumeMaterialCount(player, Items.FIRE_CHARGE, 16);
             }
 
-            // 2. 修改冷却 (60秒 = 1200 ticks)
-            PacketUtils.setSkillCooldown(player, skill.id, 1200);
+            // 2. 修改冷却
+            PacketUtils.consumeSkillCharge(player, skill, true);
 
             // 3. 连续发射逻辑
             int count = (level == 1) ? 9 : (level == 2) ? 13 : 16;
@@ -382,6 +466,7 @@ public class SkillActionHandler {
             return false;
         }
         consumeMaterial(player, usedIngredient);
+        PacketUtils.consumeSkillCharge(player, skill, false);
 
         // 计算数量
         int baseCount = (level == 1) ? 1 : (level == 2) ? 4 : 7;
@@ -491,7 +576,7 @@ public class SkillActionHandler {
             updateSkillSlotBus(player, skill.id, (int)duration, endTime);
 
             // CD: 45s
-            PacketUtils.setSkillCooldown(player, skill.id, 900);
+            PacketUtils.consumeSkillCharge(player, skill, true);
 
             SkillSoundHandler.playSkillSound(player, SkillSoundHandler.SoundType.BUFF);
             player.sendMessage(Text.translatable("message.ascension.radiant_light_active").formatted(Formatting.YELLOW), true);
@@ -524,7 +609,7 @@ public class SkillActionHandler {
         updateSkillSlotBus(player, skill.id, duration, endTime);
 
         // CD: 45s
-        PacketUtils.setSkillCooldown(player, skill.id, 900);
+        PacketUtils.consumeSkillCharge(player, skill, false);
 
         SkillSoundHandler.playSkillSound(player, SkillSoundHandler.SoundType.ACTIVATE);
         player.sendMessage(Text.translatable("message.ascension.radiant_damage_active").formatted(Formatting.GOLD), true);
@@ -533,7 +618,256 @@ public class SkillActionHandler {
         return true;
     }
 
-    // === 通用辅助方法：查找材料 ===
+    // === 斗转星移 ===
+    public static boolean executeStarShift(ServerPlayerEntity player, ActiveSkill skill, boolean isSecondary) {
+        // === 次要效果：万象天引·止 (停止弹射物) ===
+        if (isSecondary) {
+            // 1. 获取范围内的弹射物 (16格)
+            World world = player.getWorld();
+            double range = 16.0;
+            List<ProjectileEntity> projectiles = world.getEntitiesByClass(
+                    net.minecraft.entity.projectile.ProjectileEntity.class,
+                    player.getBoundingBox().expand(range),
+                    p -> true // 所有弹射物
+            );
+
+            if (projectiles.isEmpty()) {
+                player.sendMessage(Text.translatable("message.ascension.no_projectiles").formatted(Formatting.YELLOW), true);
+                return false;
+            }
+
+            // 2. 冻结它们
+            for (net.minecraft.entity.projectile.ProjectileEntity p : projectiles) {
+                p.setVelocity(0, 0, 0);
+                p.setNoGravity(true);
+                p.velocityModified = true; // 强制更新客户端
+            }
+
+            // 3. 播放音效
+            player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
+                    SoundEvents.BLOCK_BEACON_DEACTIVATE, SoundCategory.PLAYERS, 1.0f, 0.5f);
+
+            // 4. 延迟销毁 (4秒后)
+            new Timer().schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    player.getServer().execute(() -> {
+                        for (net.minecraft.entity.projectile.ProjectileEntity p : projectiles) {
+                            if (p.isAlive()) {
+                                p.discard(); // 销毁
+                                // 播放一点特效
+                                ((ServerWorld) world).spawnParticles(ParticleTypes.POOF, p.getX(), p.getY(), p.getZ(), 1, 0, 0, 0, 0);
+                            }
+                        }
+                    });
+                }
+            }, 4000); // 4000ms = 4s
+
+            // 设定次要技能冷却 (例如 30秒)
+            PacketUtils.consumeSkillCharge(player, skill, true);
+            return true;
+        }
+
+        // === 主要效果：斗转星移 (时间加速) ===
+        ActiveSkill.CastIngredient usedIngredient = findMaterial(player, skill);
+        if (usedIngredient == null && !player.isCreative()) {
+            player.sendMessage(Text.translatable("message.ascension.no_material").formatted(Formatting.RED), true);
+            return false;
+        }
+        consumeMaterial(player, usedIngredient);
+
+        // [特殊修改] 斗转星移的主要效果冷却时间受施法材料影响
+        // ActiveSkill 注册的只是默认值，我们需要根据材料动态调整
+        // 方案：调用 consumeSkillCharge 之前先手动修改 ActiveSkill 对象（不推荐，会污染全局），
+        // 或者 PacketUtils 增加 override 参数？
+        // 鉴于 consumeSkillCharge 是通用的，我们可以先调用它，然后再手动“修正”最后一次冷却时间。
+        PacketUtils.consumeSkillCharge(player, skill, false); // 先按默认扣除
+        // 修正逻辑：如果用了钻石，减少冷却
+        if (usedIngredient != null && usedIngredient.isPriority) {
+            // 这里我们需要重新设置一下刚刚那个槽位的冷却时间
+            // 因为 consumeSkillCharge 已经把冷却加上去了（可能是进队列，可能是设为 cooldown_end）
+            // 这是一个 Edge Case，为了代码整洁，建议在 ActiveSkill 里就把逻辑写好，但目前我们只能 patch。
+            // 简单处理：直接覆盖 setSkillCooldown
+            PacketUtils.setSkillCooldown(player, skill.id, 30 * 20);
+        }
+
+        // 2. 激活全局加速状态
+        // 我们在 SkillEffectHandler 里处理具体的 tick 逻辑
+        SkillEffectHandler.activateTimeAcceleration(player.getServer().getOverworld(), 30 * 20); // 持续 30秒
+
+        // 3. 视觉与听觉反馈
+        player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
+                SoundEvents.BLOCK_CONDUIT_ACTIVATE, SoundCategory.PLAYERS, 1.0f, 0.5f);
+        player.sendMessage(Text.translatable("message.ascension.star_shift_active").formatted(Formatting.AQUA), true);
+
+        // 同步状态用于 UI 显示 (复用 invicible_status_end 等通用槽位显示逻辑，或者新增一个)
+        // 这里简单复用 updateSkillSlotBus 来显示持续时间
+        long now = player.getWorld().getTime();
+        updateSkillSlotBus(player, skill.id, 30 * 20, now + 30 * 20);
+        PacketUtils.syncSkillData(player);
+
+        return true;
+    }
+
+    // === 怨灵之怒 (Wraith's Wrath) ===
+    public static boolean executeWraithWrath(ServerPlayerEntity player, ActiveSkill skill, boolean isSecondary) {
+        int level = PacketUtils.getSkillLevel(player, skill.id);
+        if (level <= 0) return false;
+
+        // 预先检查：是否使用了瞬间伤害药箭进行增幅
+        // 我们需要模拟 consumeMaterial 的查找逻辑来检查药水类型
+        boolean isBoosted = false;
+
+        // 只有当背包里确实有材料时才检查（这里不负责报错，报错交给后面的 findMaterial/consumeMaterial）
+        IEntityDataSaver dataSaver = (IEntityDataSaver) player;
+        NbtList materialList = dataSaver.getPersistentData().getList("casting_materials", 10); // 10 = Compound
+
+        for (int i = 0; i < materialList.size(); i++) {
+            ItemStack stack = ItemStack.fromNbt(materialList.getCompound(i));
+            // 怨灵之怒消耗的是 TIPPED_ARROW (根据 SkillRegistry 注册信息)
+            if (stack.isOf(Items.TIPPED_ARROW) && stack.getCount() >= 1) {
+                Potion potion = PotionUtil.getPotion(stack);
+                if (potion == Potions.HARMING || potion == Potions.STRONG_HARMING) {
+                    isBoosted = true;
+                }
+                break; // consumeMaterial 总是消耗找到的第一个符合条件的物品，所以我们检查第一个即可
+            }
+        }
+
+        // === 次要效果：怨灵之视 (单体伤害) ===
+        if (isSecondary) {
+            double range = 36.0;
+            Vec3d start = player.getEyePos();
+            Vec3d look = player.getRotationVector();
+            Vec3d end = start.add(look.multiply(range));
+
+            // 射线检测实体
+            Box box = player.getBoundingBox().expand(range);
+            EntityHitResult hit = ProjectileUtil.raycast(player, start, end, box,
+                    e -> !e.isSpectator() && e.isAlive() && e != player, range * range);
+
+            if (hit != null && hit.getEntity() instanceof LivingEntity target) {
+                // 造成 4 点魔法伤害
+                float damage = isBoosted ? 8.0f : 4.0f;
+                target.damage(player.getDamageSources().magic(), damage);
+
+                // 特效
+                ((ServerWorld)player.getWorld()).spawnParticles(ParticleTypes.SCULK_SOUL,
+                        target.getX(), target.getBodyY(0.5), target.getZ(),
+                        5, 0.1, 0.1, 0.1, 0.05);
+                player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
+                        SoundEvents.ENTITY_VEX_HURT, SoundCategory.PLAYERS, 1.0f, 1.5f);
+
+                if (isBoosted) {
+                    // 手动消耗一根药箭以获得增幅
+                    consumeMaterialCount(player, Items.TIPPED_ARROW, 1);
+                    player.sendMessage(Text.of("§5[怨灵] §d药箭增幅生效！"), true);
+                }
+
+                // 次要冷却
+                PacketUtils.consumeSkillCharge(player, skill, true);
+                return true;
+            } else {
+                player.sendMessage(Text.translatable("message.ascension.wraith_no_target").formatted(Formatting.RED), true);
+                return false;
+            }
+        }
+
+        // === 主要效果：亡灵天灾 (范围AOE) ===
+        ActiveSkill.CastIngredient usedIngredient = findMaterial(player, skill);
+        if (usedIngredient == null && !player.isCreative()) {
+            player.sendMessage(Text.translatable("message.ascension.no_material").formatted(Formatting.RED), true);
+            return false;
+        }
+        consumeMaterial(player, usedIngredient);
+
+        // 1. 设置蓄力状态
+        // 蓄力逻辑改为使用耐久条
+        long chargeTime = 80; // 4s
+        long now = player.getWorld().getTime();
+        long endTime = now + chargeTime;
+
+        // 1. 设置 NBT 标记用于 ServerTick 判断
+        NbtCompound nbt = ((IEntityDataSaver) player).getPersistentData();
+        nbt.putLong("wraith_charging_end", endTime);
+        if (isBoosted) {
+            nbt.putBoolean("wraith_damage_boost", true);
+            //player.sendMessage(Text.of("§5[怨灵] §d死灵能量已通过药箭增强..."), true);
+        }
+
+        // 2. 使用 updateSkillSlotBus 来显示绿色耐久条倒计时
+        // 这样玩家就能看到图标下方有一个进度条在缩减
+        updateSkillSlotBus(player, skill.id, (int)chargeTime, endTime);
+
+        // 3. 播放开始音效
+        player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
+                SoundEvents.ENTITY_WARDEN_AGITATED, SoundCategory.PLAYERS, 1.0f, 0.5f);
+        player.sendMessage(Text.translatable("message.ascension.wraith_charging").formatted(Formatting.DARK_PURPLE), true);
+
+        return true;
+    }
+
+    // 岿然不动 (Steadfast)
+    public static boolean executeSteadfast(ServerPlayerEntity player, ActiveSkill skill, boolean isSecondary) {
+        int level = PacketUtils.getSkillLevel(player, skill.id);
+        if (level <= 0) return false;
+
+        if (isSecondary) {
+            // === 次要效果：生命提升 (2颗心) ===
+            // 使用 true (secondary) 消耗充能
+            PacketUtils.consumeSkillCharge(player, skill, true);
+            // 给予 45秒 (900 ticks) 的伤害吸收效果，强度 0 (4点 = 2颗心)
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.ABSORPTION, 900, 4));
+            // 音效
+            //SkillSoundHandler.playSkillSound(player, SkillSoundHandler.SoundType.HEAL);
+            //player.sendMessage(Text.translatable("message.ascension.steadfast_secondary").formatted(Formatting.GREEN), true);
+            return true;
+        }
+
+        // === 主要效果：护甲衰减 ===
+        ActiveSkill.CastIngredient usedIngredient = findMaterial(player, skill);
+        if (usedIngredient == null && !player.isCreative()) {
+            player.sendMessage(Text.translatable("message.ascension.no_material").formatted(Formatting.RED), true);
+            return false;
+        }
+        consumeMaterial(player, usedIngredient);
+
+        // 判定冷却：金锭减半
+        int cooldown = 1800; // 90s (default)
+        if (usedIngredient != null && usedIngredient.isPriority) {
+            cooldown = 900; // 45s (half)
+        }
+
+        // 使用自定义冷却消耗充能
+        PacketUtils.consumeSkillCharge(player, skill, false, cooldown);
+
+        // 初始化护甲衰减逻辑
+        IEntityDataSaver data = (IEntityDataSaver) player;
+        NbtCompound nbt = data.getPersistentData();
+        long now = player.getWorld().getTime();
+
+        // 记录开始时间
+        nbt.putLong("steadfast_start_time", now);
+
+        // 持续时间: Lv1/2 = 15s (300 ticks), Lv3 = 30s (600 ticks)
+        // 初始护甲 30，衰减速度 2/s 或 1/s
+        int duration = (level >= 3) ? 600 : 300;
+        long endTime = now + duration;
+
+        // 更新耐久条显示
+        updateSkillSlotBus(player, skill.id, duration, endTime);
+
+        // 音效与特效
+        SkillSoundHandler.playSkillSound(player, SkillSoundHandler.SoundType.DEFENSE);
+        player.sendMessage(Text.translatable("message.ascension.steadfast_active").formatted(Formatting.GOLD), true);
+
+        // 立即触发一次属性更新，以便加上护甲
+        SkillEffectHandler.updateSteadfastArmor(player);
+
+        return true;
+    }
+
+    // 通用辅助方法：查找材料
     // 返回找到的第一个匹配的技能材料配置 (包含加成信息)，如果没找到返回 null
     private static ActiveSkill.CastIngredient findMaterial(ServerPlayerEntity player, ActiveSkill skill) {
         IEntityDataSaver dataSaver = (IEntityDataSaver) player;
