@@ -145,6 +145,13 @@
   "message.ascension.wraith_no_target": "§f[怨灵之怒] 视野内没有有效目标！",
   "message.ascension.steadfast_active": "§6[岿然不动] 绝对防御已激活！护甲正在衰减...",
   "message.ascension.steadfast_secondary": "§a[岿然不动] 获得临时生命！",
+  "message.ascension.cocktail_drunk": "§d[鸡尾酒] 你喝下了鸡尾酒并获得了：%s",
+  "message.ascension.cocktail_bonus": "§d[鸡尾酒] 额外获得正面效果：%s",
+  "message.ascension.void_touch_break": "§d[虚空之触] 物质已瓦解。",
+  "message.ascension.void_touch_place": "§d[虚空之触] 物质已具象化。",
+  "message.ascension.void_touch_fail": "§d[虚空之触] 目标过于坚硬或超出范围。",
+  "message.ascension.finification_active": "§f[鳍化] 你感觉身上长出了鳍片...",
+  "message.ascension.finification_expired": "§f[鳍化] 鳍片消退了。",
 
   "enchantment.ascension.life_steal": "生命汲取",
   "enchantment.ascension.speed_steal": "速度偷取",
@@ -469,6 +476,28 @@
   "skill.ascension.steadfast.upgrade.3": "§a+ 从本技能中获得的护甲衰减速度减慢",
   "skill.ascension.steadfast.desc.3": "§e施法材料：§f铜锭 / 金锭 §7(冷却减半)\n§b效果：§f获得30点护甲值，且按每秒1点的速度衰减至0。\n§3次要效果：§f立刻获得 §e2❤ §f 伤害吸收。",
 
+  "skill.ascension.cocktail_brewing": "酿造鸡尾酒",
+  "skill.ascension.cocktail_brewing.desc": "§7调制一杯神秘的鸡尾酒。效果难以预料。",
+  "skill.ascension.cocktail_brewing.desc.1": "§e施法材料：§f铜锭 / 糖\n§b效果：§f随机获得 1 种维持 12 秒的状态效果。\n§775%% 概率获得正面状态，25%% 概率获得负面状态。\n§3次要效果：§f随机延长目前你具有的所有状态时长，总延长时间为 30 秒。",
+  "skill.ascension.cocktail_brewing.upgrade.2": "§a+ 增加1次充能上限",
+  "skill.ascension.cocktail_brewing.desc.2": "§e施法材料：§f铜锭 / 糖\n§b效果：§f随机获得 1 种维持 12 秒的状态效果。\n§775%% 概率获得正面状态，25%% 概率获得负面状态。\n§3次要效果：§f随机延长目前你具有的所有状态时长，总延长时间为 30 秒。",
+  "skill.ascension.cocktail_brewing.upgrade.3": "§a+ 增加1次充能上限",
+  "skill.ascension.cocktail_brewing.desc.3": "§e施法材料：§f铜锭 / 糖\n§b效果：§f随机获得 1 种维持 12 秒的状态效果。\n§775%% 概率获得正面状态，25%% 概率获得负面状态。\n§3次要效果：§f随机延长目前你具有的所有状态时长，总延长时间为 30 秒。",
+  "skill.ascension.cocktail_brewing.upgrade.4": "§a+ 增加1次充能上限，且如果你通过本技能获得了负面状态则仍然会获得1种随机正面状态",
+  "skill.ascension.cocktail_brewing.desc.4": "§e施法材料：§f铜锭 / 糖\n§b效果：§f随机获得 1 种维持 12 秒的状态效果。\n§775%% 概率获得正面状态，25%% 概率获得负面状态。\n§7如果获得了负面状态则同时获得 1 种随机正面状态。\n§3次要效果：§f随机延长目前你具有的所有状态时长，总延长时间为 30 秒。",
+
+  "skill.ascension.void_touch": "虚空之触",
+  "skill.ascension.void_touch.desc": "虚空的声音在你耳边回响，虚无的力量从你指尖流过...",
+  "skill.ascension.void_touch.desc.1": "§e施法材料：§f铜锭 / 末影之眼 §7(冷却减半)\n§b效果：§f瞬间破坏准星上的方块。\n§7将使用主手的工具进行破坏。\n§7破坏的方块越硬冷却时间越长。\n§3次要效果：§f放置主手的方块到准星瞄准的位置。",
+  "skill.ascension.void_touch.upgrade.2": "§a+ 增加1次充能上限",
+  "skill.ascension.void_touch.desc.2": "§e施法材料：§f铜锭 / 末影之眼 §7(冷却减半)\n§b效果：§f瞬间破坏准星上的方块。\n§7将使用主手的工具进行破坏。\n§7破坏的方块越硬冷却时间越长。\n§3次要效果：§f放置主手的方块到准星瞄准的位置。",
+
+  "skill.ascension.finification": "鳍化",
+  "skill.ascension.finification.desc": "像鱼一样在水中穿梭。",
+  "skill.ascension.finification.desc.1": "§e施法材料：§f铜锭 / 河豚 §7(延长鳍化时间)\n§b效果：§f20秒内大幅增加游泳的速度。\n§3次要效果：§f立刻获得2格氧气值。",
+  "skill.ascension.finification.upgrade.2": "§a+ 增加1次充能上限\n§a+ 在水中上升时会加速！",
+  "skill.ascension.finification.desc.2": "§e施法材料：§f铜锭 / 河豚 §7(延长鳍化时间)\n§b效果：§f20秒内大幅增加游泳的速度。\n§7在水下上升时会加速。\n§3次要效果：§f立刻获得2格氧气值。",
+
   "criterion.ascension.eat_apple": "吃过 %s 个苹果",
   "criterion.ascension.kill_cow": "击杀 %s 只牛",
   "criterion.ascension.jump": "跳跃 %s 次",
@@ -528,5 +557,12 @@
   "criterion.ascension.kill_undead_types": "击杀 %s 种不同的亡灵生物",
   "criterion.ascension.obtain_nether_star": "获得 %s 个下界之星",
   "criterion.ascension.craft_clock_in_end": "在末地合成 %s 个时钟",
-  "criterion.ascension.craft_diamond_leggings": "制作 1 件钻石护腿"
+  "criterion.ascension.craft_diamond_leggings": "制作 1 件钻石护腿",
+  "criterion.ascension.brew_4_potions": "炼制 4 种不同的药水",
+  "criterion.ascension.brew_5_potions": "炼制 5 种不同的药水",
+  "criterion.ascension.brew_6_potions": "炼制 6 种不同的药水",
+  "criterion.ascension.brew_7_potions": "炼制 7 种不同的药水",
+  "criterion.ascension.activate_beacon_in_end": "在末地激活一座信标",
+  "criterion.ascension.fish_pufferfish": "钓到 1 条河豚",
+  "criterion.ascension.fish_respiration_book": "钓到附有水下呼吸的书"
 }

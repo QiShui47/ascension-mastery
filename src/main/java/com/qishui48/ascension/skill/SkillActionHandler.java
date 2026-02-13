@@ -4,14 +4,21 @@ import com.qishui48.ascension.util.IEntityDataSaver;
 import com.qishui48.ascension.util.MotionJumpUtils;
 import com.qishui48.ascension.util.PacketUtils;
 import com.qishui48.ascension.util.SkillSoundHandler;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.effect.StatusEffect;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.projectile.ProjectileEntity;
 import net.minecraft.entity.projectile.ProjectileUtil;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.ItemPlacementContext;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.loot.context.LootContextParameterSet;
+import net.minecraft.loot.context.LootContextParameters;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
@@ -24,7 +31,9 @@ import net.minecraft.sound.SoundEvents;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
+import net.minecraft.util.ActionResult;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
@@ -34,7 +43,9 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.RaycastContext;
 import net.minecraft.world.World;
+import net.minecraft.world.event.GameEvent;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -181,6 +192,13 @@ public class SkillActionHandler {
 
             // 检查是否处于 "回溯窗口期"
             if (nbt.contains("blink_recall_deadline")) {
+                ActiveSkill.CastIngredient usedIngredient = findMaterial(player, skill);
+                if (usedIngredient == null && !player.isCreative()) {
+                    player.sendMessage(Text.translatable("message.ascension.no_material").formatted(Formatting.RED), true);
+                    return false;
+                }
+                consumeMaterial(player, usedIngredient);
+
                 // === 触发回溯 (第二次按键) ===
                 double x = nbt.getDouble("blink_recall_x");
                 double y = nbt.getDouble("blink_recall_y");
@@ -205,7 +223,8 @@ public class SkillActionHandler {
                 nbt.remove("blink_recall_y");
                 nbt.remove("blink_recall_z");
                 nbt.remove("blink_recall_dim");
-
+                // 立即清除 UI 上的持续时间条
+                updateSkillSlotBus(player, skill.id, 0, 0);
                 // 此时才真正消耗充能，并进入次要冷却
                 PacketUtils.consumeSkillCharge(player, skill, true);
 
@@ -302,16 +321,12 @@ public class SkillActionHandler {
     // 辅助：执行传送与特效
     private static void performTeleport(ServerPlayerEntity player, double x, double y, double z) {
         Vec3d start = player.getPos();
-
         // 播放传送前音效
         player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(), net.minecraft.sound.SoundEvents.ENTITY_ENDERMAN_TELEPORT, net.minecraft.sound.SoundCategory.PLAYERS, 1.0f, 1.0f);
-
         // 传送
         player.teleport(player.getServerWorld(), x, y, z, player.getYaw(), player.getPitch());
-
         // 播放传送后音效
         player.getWorld().playSound(null, x, y, z, net.minecraft.sound.SoundEvents.ENTITY_ENDERMAN_TELEPORT, net.minecraft.sound.SoundCategory.PLAYERS, 1.0f, 1.0f);
-
         // 生成粒子 (服务器端生成，所有客户端可见)
         // 在起点和终点之间画线
         int particleCount = 20;
@@ -321,7 +336,6 @@ public class SkillActionHandler {
             double px = start.x + diff.x * delta;
             double py = start.y + diff.y * delta + 0.5; // 稍微抬高
             double pz = start.z + diff.z * delta;
-
             ((ServerWorld)player.getWorld()).spawnParticles(net.minecraft.particle.ParticleTypes.PORTAL, px, py, pz, 1, 0, 0, 0, 0);
         }
     }
@@ -344,11 +358,11 @@ public class SkillActionHandler {
         boolean air2 = world.getBlockState(pos.up()).getCollisionShape(world, pos.up()).isEmpty();
         // 下方可以是任何方块，甚至是流体，只要不是虚空就行。或者严格点要求下方有碰撞箱。
         // 这里为了体验流畅，暂不强制下方必须有方块（允许空中闪现），只要求不卡住
-        return air1 && air2;
+        //return air1 && air2;
 
         // 如果你要求“必须落在方块上”，解开下面注释：
-        // boolean ground = !world.getBlockState(pos.down()).getCollisionShape(world, pos.down()).isEmpty();
-        // return air1 && air2 && ground;
+         boolean ground = !world.getBlockState(pos.down()).getCollisionShape(world, pos.down()).isEmpty();
+         return air1 && air2 && ground;
     }
 
     // 不败金身
@@ -403,7 +417,7 @@ public class SkillActionHandler {
             NbtCompound slotNbt = activeSlots.getCompound(i);
             if (slotNbt.getString("id").equals(skillId)) {
                 // 写入通用视觉键值对
-                slotNbt.putInt("effect_total", totalDuration);
+                if (totalDuration != -1) slotNbt.putInt("effect_total", totalDuration);// 支持只更新 end
                 slotNbt.putLong("effect_end", endTime);
                 // 必须重新 set 一下以确保 NBT 标记为脏 (虽然 modify 引用通常有效，但 set 更保险)
                 activeSlots.set(i, slotNbt);
@@ -514,6 +528,7 @@ public class SkillActionHandler {
 
     // 辅助：检查特定物品数量
     private static boolean checkMaterialCount(ServerPlayerEntity player, net.minecraft.item.Item item, int required) {
+        if (player.isCreative()) return true; // 创造模式直接通过
         IEntityDataSaver data = (IEntityDataSaver) player;
         NbtList list = data.getPersistentData().getList("casting_materials", NbtElement.COMPOUND_TYPE);
         int total = 0;
@@ -526,6 +541,7 @@ public class SkillActionHandler {
 
     // 辅助：消耗特定物品数量 (跨格子)
     private static void consumeMaterialCount(ServerPlayerEntity player, net.minecraft.item.Item item, int amount) {
+        if (player.isCreative()) return; // 创造模式不消耗
         IEntityDataSaver data = (IEntityDataSaver) player;
         NbtList list = data.getPersistentData().getList("casting_materials", NbtElement.COMPOUND_TYPE);
         int remaining = amount;
@@ -551,9 +567,9 @@ public class SkillActionHandler {
         player.currentScreenHandler.syncState();
     }
 
-    // === 光耀化身 (Radiant Avatar) ===
+    // 光耀化身 (Radiant Avatar)
     public static boolean executeRadiantAvatar(ServerPlayerEntity player, ActiveSkill skill, boolean isSecondary) {
-        // === 次要效果：仅发光 ===
+        // 次要效果：仅发光
         if (isSecondary) {
             // 1. 检查材料 (1根烈焰棒)
             if (!player.isCreative()) {
@@ -584,7 +600,7 @@ public class SkillActionHandler {
             return true;
         }
 
-        // === 主要效果：亡灵杀手光环 ===
+        // 主要效果：亡灵杀手光环
         int level = PacketUtils.getSkillLevel(player, skill.id);
         if (level <= 0) return false;
 
@@ -622,6 +638,12 @@ public class SkillActionHandler {
     public static boolean executeStarShift(ServerPlayerEntity player, ActiveSkill skill, boolean isSecondary) {
         // === 次要效果：万象天引·止 (停止弹射物) ===
         if (isSecondary) {
+            ActiveSkill.CastIngredient usedIngredient = findMaterial(player, skill);
+            if (usedIngredient == null && !player.isCreative()) {
+                player.sendMessage(Text.translatable("message.ascension.no_material").formatted(Formatting.RED), true);
+                return false;
+            }
+            consumeMaterial(player, usedIngredient);
             // 1. 获取范围内的弹射物 (16格)
             World world = player.getWorld();
             double range = 16.0;
@@ -736,6 +758,12 @@ public class SkillActionHandler {
 
         // === 次要效果：怨灵之视 (单体伤害) ===
         if (isSecondary) {
+            ActiveSkill.CastIngredient usedIngredient = findMaterial(player, skill);
+            if (usedIngredient == null && !player.isCreative()) {
+                player.sendMessage(Text.translatable("message.ascension.no_material").formatted(Formatting.RED), true);
+                return false;
+            }
+            consumeMaterial(player, usedIngredient);
             double range = 36.0;
             Vec3d start = player.getEyePos();
             Vec3d look = player.getRotationVector();
@@ -761,7 +789,7 @@ public class SkillActionHandler {
                 if (isBoosted) {
                     // 手动消耗一根药箭以获得增幅
                     consumeMaterialCount(player, Items.TIPPED_ARROW, 1);
-                    player.sendMessage(Text.of("§5[怨灵] §d药箭增幅生效！"), true);
+                    //player.sendMessage(Text.of("§5[怨灵] §d药箭增幅生效！"), true);
                 }
 
                 // 次要冷却
@@ -813,11 +841,17 @@ public class SkillActionHandler {
         if (level <= 0) return false;
 
         if (isSecondary) {
+            ActiveSkill.CastIngredient usedIngredient = findMaterial(player, skill);
+            if (usedIngredient == null && !player.isCreative()) {
+                player.sendMessage(Text.translatable("message.ascension.no_material").formatted(Formatting.RED), true);
+                return false;
+            }
+            consumeMaterial(player, usedIngredient);
             // === 次要效果：生命提升 (2颗心) ===
             // 使用 true (secondary) 消耗充能
             PacketUtils.consumeSkillCharge(player, skill, true);
             // 给予 45秒 (900 ticks) 的伤害吸收效果，强度 0 (4点 = 2颗心)
-            player.addStatusEffect(new StatusEffectInstance(StatusEffects.ABSORPTION, 900, 4));
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.ABSORPTION, 900, 0));
             // 音效
             //SkillSoundHandler.playSkillSound(player, SkillSoundHandler.SoundType.HEAL);
             //player.sendMessage(Text.translatable("message.ascension.steadfast_secondary").formatted(Formatting.GREEN), true);
@@ -889,6 +923,284 @@ public class SkillActionHandler {
             }
         }
         return null;
+    }
+
+    // 酿造鸡尾酒 (Cocktail Brewing)
+    public static boolean executeCocktailBrewing(ServerPlayerEntity player, ActiveSkill skill, boolean isSecondary) {
+        int level = PacketUtils.getSkillLevel(player, skill.id);
+        if (level <= 0) return false;
+
+        if (isSecondary) {
+            // === 次要效果：延长所有状态 ===
+            ActiveSkill.CastIngredient usedIngredient = findMaterial(player, skill);
+            if (usedIngredient == null && !player.isCreative()) {
+                player.sendMessage(Text.translatable("message.ascension.no_material").formatted(Formatting.RED), true);
+                return false;
+            }
+            consumeMaterial(player, usedIngredient);
+            PacketUtils.consumeSkillCharge(player, skill, true);
+
+            // 逻辑：总延长时间 30秒 (600 ticks)
+            var effects = player.getStatusEffects();
+            if (!effects.isEmpty()) {
+                int totalBonus = 600;
+                int bonusPerEffect = totalBonus / effects.size();
+
+                // 由于 StatusEffectInstance 是不可变的，必须复制并重新添加
+                // 必须先收集起来再修改，避免并发修改异常
+                List<StatusEffectInstance> toUpdate = new ArrayList<>(effects);
+
+                for (StatusEffectInstance instance : toUpdate) {
+                    StatusEffectInstance newInstance = new StatusEffectInstance(
+                            instance.getEffectType(),
+                            instance.getDuration() + bonusPerEffect,
+                            instance.getAmplifier(),
+                            instance.isAmbient(),
+                            instance.shouldShowParticles(),
+                            instance.shouldShowIcon()
+                    );
+                    player.addStatusEffect(newInstance); // 覆盖旧的
+                }
+                player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
+                        SoundEvents.BLOCK_BREWING_STAND_BREW, SoundCategory.PLAYERS, 1.0f, 1.2f);
+                player.sendMessage(Text.translatable("message.ascension.cocktail_extended").formatted(Formatting.GREEN), true);
+            }
+            return true;
+        }
+
+        // === 主要效果：随机鸡尾酒 ===
+        ActiveSkill.CastIngredient usedIngredient = findMaterial(player, skill);
+        if (usedIngredient == null && !player.isCreative()) {
+            player.sendMessage(Text.translatable("message.ascension.no_material").formatted(Formatting.RED), true);
+            return false;
+        }
+        consumeMaterial(player, usedIngredient);
+        PacketUtils.consumeSkillCharge(player, skill, false);
+
+        // 12秒 = 240 ticks
+        int duration = 240;
+        boolean isMaxLevel = (level >= 4);
+
+        // 获取随机效果
+        StatusEffect effect = getRandomEffect(player.getWorld().random, 0.75f); // 75% 正面
+        boolean isBeneficial = effect.isBeneficial(); // 注意：低版本没有这个方法，未来适配时可以用 getCategory()
+
+        player.addStatusEffect(new StatusEffectInstance(effect, duration, 0));
+        Text name = effect.getName();
+        player.sendMessage(Text.translatable("message.ascension.cocktail_drunk", name).formatted(isBeneficial ? Formatting.GREEN : Formatting.RED), true);
+
+        // 满级特效：如果是负面，额外给一个正面
+        if (isMaxLevel && !isBeneficial) {
+            StatusEffect bonusEffect = getRandomEffect(player.getWorld().random, 1.0f); // 100% 正面
+            player.addStatusEffect(new StatusEffectInstance(bonusEffect, duration, 0));
+            player.sendMessage(Text.translatable("message.ascension.cocktail_bonus", bonusEffect.getName()).formatted(Formatting.GOLD), true);
+        }
+
+        player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
+                SoundEvents.ITEM_HONEY_BOTTLE_DRINK, SoundCategory.PLAYERS, 1.0f, 1.0f);
+
+        return true;
+    }
+
+    // 辅助：获取随机效果
+    private static StatusEffect getRandomEffect(net.minecraft.util.math.random.Random random, float positiveChance) {
+        // 收集所有非瞬间效果
+        List<StatusEffect> beneficial = new ArrayList<>();
+        List<StatusEffect> harmful = new ArrayList<>();
+
+        for (StatusEffect e : net.minecraft.registry.Registries.STATUS_EFFECT) {
+            if (e.isInstant()) continue;
+            // 判断有益/有害
+            if (e.getCategory() == net.minecraft.entity.effect.StatusEffectCategory.BENEFICIAL) beneficial.add(e);
+            else if (e.getCategory() == net.minecraft.entity.effect.StatusEffectCategory.HARMFUL) harmful.add(e);
+        }
+
+        if (random.nextFloat() < positiveChance) {
+            return beneficial.get(random.nextInt(beneficial.size()));
+        } else {
+            return harmful.get(random.nextInt(harmful.size()));
+        }
+    }
+
+    // 虚空之触 (Void Touch)
+    public static boolean executeVoidTouch(ServerPlayerEntity player, ActiveSkill skill, boolean isSecondary) {
+        int level = PacketUtils.getSkillLevel(player, skill.id);
+        if (level <= 0) return false;
+
+        World world = player.getWorld();
+
+        // 1. 检查材料
+        ActiveSkill.CastIngredient usedIngredient = findMaterial(player, skill);
+        if (usedIngredient == null && !player.isCreative()) {
+            player.sendMessage(Text.translatable("message.ascension.no_material").formatted(Formatting.RED), true);
+            return false;
+        }
+        consumeMaterial(player, usedIngredient);
+
+        // 判断是否使用了末影之眼 (冷却减半)
+        boolean halfCooldown = (usedIngredient != null && usedIngredient.isPriority);
+
+        // 射线检测 (48米)
+        double range = 48.0;
+        Vec3d start = player.getEyePos();
+        Vec3d look = player.getRotationVector();
+        Vec3d end = start.add(look.multiply(range));
+        BlockHitResult hit = world.raycast(new RaycastContext(start, end, RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.NONE, player));
+
+        if (hit.getType() == HitResult.Type.MISS) {
+            player.sendMessage(Text.translatable("message.ascension.void_touch_fail").formatted(Formatting.GRAY), true);
+            return false; // 未命中不消耗充能？通常技能如果空放建议返还，这里简单起见视作失败
+        }
+
+        BlockPos pos = hit.getBlockPos();
+        BlockState state = world.getBlockState(pos);
+
+        // === 次要效果：远程放置 ===
+        if (isSecondary) {
+            // 计算放置位置
+            BlockPos placePos = pos.offset(hit.getSide());
+            ItemStack handStack = player.getMainHandStack();
+
+            if (handStack.isEmpty() || !(handStack.getItem() instanceof BlockItem)) {
+                //player.sendMessage(Text.translatable("message.ascension.no_material").formatted(Formatting.RED), true);
+                return false;
+            }
+
+            // 尝试放置
+            ItemPlacementContext context = new ItemPlacementContext(player, Hand.MAIN_HAND, handStack, hit);
+            ActionResult result = ((BlockItem) handStack.getItem()).place(context);
+
+            if (result.isAccepted()) {
+                // 计算冷却: 12s
+                int cooldown = 12 * 20;
+                if (halfCooldown) cooldown /= 2;
+
+                PacketUtils.consumeSkillCharge(player, skill, true, cooldown);
+
+                // 特效
+                ((ServerWorld) world).spawnParticles(ParticleTypes.PORTAL, placePos.getX()+0.5, placePos.getY()+0.5, placePos.getZ()+0.5, 10, 0.2, 0.2, 0.2, 0.1);
+                world.playSound(null, placePos, SoundEvents.ENTITY_ENDERMAN_TELEPORT, SoundCategory.PLAYERS, 0.5f, 1.2f);
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        // === 主要效果：远程破坏 ===
+
+        // 硬度检查 (-1 为基岩等不可破坏方块)
+        float hardness = state.getHardness(world, pos);
+        if (hardness < 0) {
+            player.sendMessage(Text.translatable("message.ascension.void_touch_fail").formatted(Formatting.RED), true);
+            return false;
+        }
+
+        // 1. 获取掉落物 (模拟主手工具挖掘)
+        ItemStack toolStack = player.getMainHandStack();
+        LootContextParameterSet.Builder builder = (new LootContextParameterSet.Builder((ServerWorld)world))
+                .add(LootContextParameters.ORIGIN, Vec3d.ofCenter(pos))
+                .add(LootContextParameters.TOOL, toolStack) // 传入工具以应用精准采集/时运/工具匹配逻辑
+                .add(LootContextParameters.THIS_ENTITY, player)
+                .add(LootContextParameters.BLOCK_STATE, state);
+
+        BlockEntity blockEntity = world.getBlockEntity(pos);
+        if (blockEntity != null) builder.add(LootContextParameters.BLOCK_ENTITY, blockEntity);
+
+        List<ItemStack> drops = state.getDroppedStacks(builder);
+
+        // 2. 放入背包或丢弃
+        for (ItemStack drop : drops) {
+            if (!player.getInventory().insertStack(drop)) {
+                player.dropItem(drop, false); // 背包满则丢出
+            }
+        }
+
+        // 3. 销毁方块
+        world.removeBlock(pos, false); // false = 不产生掉落物 (因为已经手动给了)
+        world.emitGameEvent(player, GameEvent.BLOCK_DESTROY, pos);
+
+        // 4. 扣除工具耐久
+        if (!toolStack.isEmpty() && toolStack.isDamageable()) {
+            toolStack.damage(1, player, (p) -> p.sendToolBreakStatus(Hand.MAIN_HAND));
+        }
+
+        // 5. 计算冷却：(12 + 硬度) 秒
+        int cooldownTicks = (int) ((12.0f + hardness) * 20.0f);
+        if (halfCooldown) cooldownTicks /= 2;
+
+        // 消耗充能并应用动态冷却
+        PacketUtils.consumeSkillCharge(player, skill, false, cooldownTicks);
+
+        // 6. 特效
+        ((ServerWorld) world).spawnParticles(ParticleTypes.DRAGON_BREATH, pos.getX()+0.5, pos.getY()+0.5, pos.getZ()+0.5, 15, 0.4, 0.4, 0.4, 0.05);
+        world.playSound(null, pos, SoundEvents.BLOCK_GLASS_BREAK, SoundCategory.PLAYERS, 1.0f, 0.5f); // 破碎声
+
+        return true;
+    }
+
+    // 鳍化 (Finification)
+    public static boolean executeFinification(ServerPlayerEntity player, ActiveSkill skill, boolean isSecondary) {
+        int level = PacketUtils.getSkillLevel(player, skill.id);
+        if (level <= 0) return false;
+
+        // 检查并消耗材料
+        ActiveSkill.CastIngredient usedIngredient = findMaterial(player, skill);
+        if (usedIngredient == null && !player.isCreative()) {
+            player.sendMessage(Text.translatable("message.ascension.no_material").formatted(Formatting.RED), true);
+            return false;
+        }
+        consumeMaterial(player, usedIngredient);
+
+        // 消耗充能
+        PacketUtils.consumeSkillCharge(player, skill, isSecondary);
+
+        // 强化判定：是否使用了河豚
+        boolean isBoosted = (usedIngredient != null && usedIngredient.isPriority);
+
+        if (isSecondary) {
+            // === 次要效果：回复氧气 ===
+            int currentAir = player.getAir();
+            int maxAir = player.getMaxAir();
+            // 基础回复 2格 (2 bubbles = 60 ticks of air), 强化回复 4格 (120 ticks)
+            int restoreAmount = isBoosted ? 120 : 60;
+
+            player.setAir(Math.min(maxAir, currentAir + restoreAmount));
+
+            // 音效与气泡特效
+            player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(),
+                    SoundEvents.ENTITY_PLAYER_BREATH, SoundCategory.PLAYERS, 1.0f, 1.5f);
+            ((ServerWorld)player.getWorld()).spawnParticles(ParticleTypes.BUBBLE,
+                    player.getX(), player.getEyeY(), player.getZ(), 10, 0.3, 0.3, 0.3, 0.1);
+
+            return true;
+        }
+
+        // === 主要效果：开启游泳加速状态 ===
+        long duration = isBoosted ? 800 : 400; // 40s 或 20s
+        long now = player.getWorld().getTime();
+        long endTime = now + duration;
+
+        // 设置状态 NBT
+        IEntityDataSaver data = (IEntityDataSaver) player;
+        NbtCompound nbt = data.getPersistentData();
+
+        nbt.putLong("finification_end", endTime);
+        nbt.putInt("finification_level", level); // 记录释放时的等级以便 Tick 处理
+
+        // 更新 UI
+        updateSkillSlotBus(player, skill.id, (int)duration, endTime);
+
+        // 给予初始速度爆发感
+        if (player.isTouchingWater()) {
+            player.setVelocity(player.getVelocity().multiply(1.5));
+            player.velocityModified = true;
+        }
+
+        SkillSoundHandler.playSkillSound(player, SkillSoundHandler.SoundType.ACTIVATE);
+        player.sendMessage(Text.translatable("message.ascension.finification_active").formatted(Formatting.AQUA), true);
+        PacketUtils.syncSkillData(player);
+
+        return true;
     }
 
     // === 通用辅助方法：消耗材料 ===

@@ -18,6 +18,7 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.random.Random;
@@ -370,6 +371,72 @@ public class SkillEffectHandler {
                 // 衰减至 0，移除状态
                 nbt.remove("steadfast_start_time");
                 // 此时 removeModifier 已经在上面执行过了，所以属性被清除
+            }
+        }
+    }
+
+    public static void updateFinification(ServerPlayerEntity player) {
+        IEntityDataSaver data = (IEntityDataSaver) player;
+        NbtCompound nbt = data.getPersistentData();
+
+        if (!nbt.contains("finification_end")) return;
+
+        long endTime = nbt.getLong("finification_end");
+        long now = player.getWorld().getTime();
+
+        // 检查是否过期
+        if (now >= endTime) {
+            nbt.remove("finification_end");
+            nbt.remove("finification_level");
+            PacketUtils.syncSkillData(player); // 同步以移除 UI
+            player.sendMessage(Text.translatable("message.ascension.finification_expired").formatted(Formatting.GRAY), true);
+            return;
+        }
+
+        // 效果逻辑
+        int level = nbt.getInt("finification_level");
+
+        // 1. 基础游泳加速 (给予海豚恩惠效果)
+        // 持续 2 tick 保证状态不断但离开后立即消失
+        player.addStatusEffect(new StatusEffectInstance(StatusEffects.DOLPHINS_GRACE, 2, level + 1, true, false, true));
+
+        // 2. 二级效果：水下上升冲刺
+        if (level >= 2 && player.isTouchingWater()) {
+            // 判断是否在向上看且按住跳跃键(或单纯向上游)
+            // 简单判定：Y轴速度大于 0 且 玩家看着上方 (Pitch < -10)
+            boolean isMovingUp = player.getVelocity().y > 0.01;
+            boolean isLookingUp = player.getPitch() < -10;
+
+            if (isMovingUp && isLookingUp) {
+                // 施加额外向上的推力
+                Vec3d rotation = player.getRotationVector();
+                // 只取 Y 轴分量增强，或者沿视线冲刺
+                player.addVelocity(rotation.x * 0.05, 0.12, rotation.z * 0.05);
+                player.velocityModified = true;
+
+                // 产生气泡流
+                ((ServerWorld)player.getWorld()).spawnParticles(ParticleTypes.BUBBLE_COLUMN_UP,
+                        player.getX(), player.getY(), player.getZ(), 1, 0.2, 0.2, 0.2, 0.1);
+
+                // === 双倍消耗惩罚 ===
+                // 当前是第 T 刻，结束是 E。
+                // 正常流逝：下一刻变为 T+1, 距离 E 缩短 1。
+                // 双倍消耗：我们需要让距离 E 缩短 2。
+                // 即：将 E 减去 1。
+                // 这样 ActiveSkillHud 计算 (E - T) / Total 时，分子会减小得更快。
+                long newEndTime = endTime - 1;
+                nbt.putLong("finification_end", newEndTime);
+
+                // 更新 UI 上的结束时间显示 (不需要每 tick 同步，可以每 5 tick 同步一次减少发包，或者为了流畅每 tick 同步)
+                // 这里为了视觉流畅性，每 tick 修改 NBT 但不用每 tick 发包，
+                // 但 ActiveSkillHud 是依赖 NBT 的，如果客户端不同步，UI 不会加速。
+                // 权衡：每 4 tick (0.2s) 同步一次 NBT
+                if (now % 4 == 0) {
+                    // 还要更新槽位里的 effect_end 以便 UI 正确显示
+                    // 这部分逻辑较繁琐，建议提取一个 helper
+                    SkillActionHandler.updateSkillSlotBus(player, "finification", -1, newEndTime); // -1 ignore total
+                    PacketUtils.syncSkillData(player);
+                }
             }
         }
     }

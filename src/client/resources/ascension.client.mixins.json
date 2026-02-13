@@ -9,7 +9,8 @@
 		"ClientReachMixin",
 		"InventoryScreenMixin",
 		"KeyboardMixin",
-		"MouseMixin"
+		"MouseMixin",
+		"ArmorHudMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -1,6 +1,7 @@
 package com.qishui48.ascension.screen;
 
 import com.qishui48.ascension.AscensionClient;
+import com.qishui48.ascension.client.render.SkillSlotRenderer;
 import com.qishui48.ascension.network.ModMessages;
 import com.qishui48.ascension.skill.ActiveSkill; // [新增] 导入 ActiveSkill
 import com.qishui48.ascension.skill.Skill;
@@ -9,6 +10,7 @@ import com.qishui48.ascension.util.IEntityDataSaver;
 import com.qishui48.ascension.skill.UnlockCriterion;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.resource.language.I18n;

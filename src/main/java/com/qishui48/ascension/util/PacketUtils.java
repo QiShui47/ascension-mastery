@@ -47,6 +47,14 @@ public class PacketUtils {
             syncNbt.putLong("radiant_light_end", nbt.getLong("radiant_light_end"));
         }
 
+        if (nbt.contains("blink_recall_deadline")) syncNbt.putLong("blink_recall_deadline", nbt.getLong("blink_recall_deadline"));
+        if (nbt.contains("blink_recall_x")) syncNbt.putDouble("blink_recall_x", nbt.getDouble("blink_recall_x"));
+        if (nbt.contains("blink_recall_y")) syncNbt.putDouble("blink_recall_y", nbt.getDouble("blink_recall_y"));
+        if (nbt.contains("blink_recall_z")) syncNbt.putDouble("blink_recall_z", nbt.getDouble("blink_recall_z"));
+        if (nbt.contains("blink_recall_dim")) syncNbt.putString("blink_recall_dim", nbt.getString("blink_recall_dim"));
+        // 岿然不动的时间键
+        if (nbt.contains("steadfast_start_time")) syncNbt.putLong("steadfast_start_time", nbt.getLong("steadfast_start_time"));
+
 
         // === 服务端预计算条件状态与进度 ===
         NbtCompound criteriaCache = new NbtCompound();

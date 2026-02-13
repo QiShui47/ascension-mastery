@@ -85,6 +85,10 @@ public class Ascension implements ModInitializer {
 	public static final Identifier SURVIVE_EXPLOSION = new Identifier(MOD_ID, "survive_explosion"); //在爆炸中幸存
 	public static final Identifier KILL_GHAST_WITH_REFLECTION = new Identifier(MOD_ID, "kill_ghast_with_reflection"); //用火球反击恶魂
 	public static final Identifier CRAFT_CLOCK_END = new Identifier(MOD_ID, "craft_clock_end"); // 在末地合成时钟
+	public static final Identifier BREW_POTION_TYPE_COUNT = new Identifier(MOD_ID, "brew_potion_type_count"); // 炼制不同药水
+	public static final Identifier ACTIVATE_BEACON_IN_END = new Identifier(MOD_ID, "activate_beacon_in_end"); // 在末地激活信标
+	public static final Identifier FISH_PUFFERFISH_COUNT = new Identifier(MOD_ID, "fish_pufferfish_count"); // 钓河豚
+	public static final Identifier FISH_RESPIRATION_BOOK_COUNT = new Identifier(MOD_ID, "fish_respiration_book_count"); // 钓水下呼吸
 
 	@Override
 	public void onInitialize() {
@@ -154,6 +158,10 @@ public class Ascension implements ModInitializer {
 		Registry.register(Registries.CUSTOM_STAT, SURVIVE_EXPLOSION, SURVIVE_EXPLOSION);
 		Registry.register(Registries.CUSTOM_STAT, KILL_GHAST_WITH_REFLECTION, KILL_GHAST_WITH_REFLECTION);
 		Registry.register(Registries.CUSTOM_STAT, CRAFT_CLOCK_END, CRAFT_CLOCK_END);
+		Registry.register(Registries.CUSTOM_STAT, BREW_POTION_TYPE_COUNT, BREW_POTION_TYPE_COUNT);
+		Registry.register(Registries.CUSTOM_STAT, ACTIVATE_BEACON_IN_END, ACTIVATE_BEACON_IN_END);
+		Registry.register(Registries.CUSTOM_STAT, FISH_PUFFERFISH_COUNT, FISH_PUFFERFISH_COUNT);
+		Registry.register(Registries.CUSTOM_STAT, FISH_RESPIRATION_BOOK_COUNT, FISH_RESPIRATION_BOOK_COUNT);
 		SkillRegistry.registerAll();
 
 		TEMPORARY_GLOWING_BLOCK = Registry.register(Registries.BLOCK, new Identifier(MOD_ID, "temporary_light"),

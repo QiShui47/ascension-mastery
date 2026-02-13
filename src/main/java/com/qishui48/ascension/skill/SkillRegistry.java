@@ -103,7 +103,7 @@ public class SkillRegistry {
                 .addUpgradeCriterion(4, new UnlockCriterion(Stats.CUSTOM, Ascension.EXPLORE_BASTION, 2, "criterion.ascension.explore_bastions")));
 
         // 火焰抵抗
-        register(new Skill("fire_resistance", Items.POTION, 2, "zhu_rong", 2, 15, 25)
+        register(new Skill("fire_resistance", Items.NETHERRACK, 2, "zhu_rong", 2, 15, 25)
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.BREW_FIRE_RES_POTION, 1, "criterion.ascension.brew_fire_res")));
 
         // 火焰感染
@@ -131,8 +131,8 @@ public class SkillRegistry {
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.ASCEND_HEIGHT, 200000, "criterion.ascension.ascend_height").setDisplayDivisor(100.0))
                 .addUpgradeCriterion(2, new UnlockCriterion(Stats.CUSTOM, Ascension.KILL_ZOMBIE_AIR, 50, "criterion.ascension.kill_zombie_air")));
 
-        // === [新增] 华丽掉落 ===
-        //register(new Skill("graceful_fall", Items.FEATHER, 2, "combat", 3, 5,5,10) // 假设花费为5
+        // === 华丽掉落 ===
+        //register(new Skill("graceful_fall", Items.FEATHER, 2, "combat", 3, 5,5,10)
         //       .addUpgradeCriterion(3, new UnlockCriterion("stat.ascension.fall_damage", 200, "criterion.ascension.accumulate_fall_damage"))
         //);
 
@@ -328,7 +328,7 @@ public class SkillRegistry {
                 3,
                 new int[]{1, 1, 2},
                 new int[]{1200, 1200, 1200},
-                new int[]{100, 100, 100},
+                new int[]{400, 400, 400},
                 10, 15, 20
         );
         wraithWrath.addIngredient(Items.COPPER_INGOT, 1, false, 0);
@@ -353,6 +353,64 @@ public class SkillRegistry {
         steadfast.addCriterion(new UnlockCriterion(Stats.CRAFTED, Items.DIAMOND_LEGGINGS, 1, "criterion.ascension.craft_diamond_leggings"));
         steadfast.setBehavior(SkillActionHandler::executeSteadfast);
         register(steadfast);
+
+        // 酿造鸡尾酒 (Cocktail Brewing)
+        ActiveSkill cocktail = new ActiveSkill(
+                "cocktail_brewing",
+                Items.POTION, // 图标
+                3, // Tier 3 (基于黄金屋 Tier 2)
+                "golden_house", // 父节点
+                4, // Max Level
+                new int[]{2, 3, 4, 5}, // Charges
+                new int[]{900, 900, 900, 900}, // 45s
+                new int[]{600, 600, 600, 600}, // 30s
+                10, 15, 20, 25 // Costs
+        );
+        cocktail.addIngredient(Items.COPPER_INGOT, 1, false, 0);
+        cocktail.addIngredient(Items.SUGAR, 1, false, 0);
+        cocktail.addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.BREW_POTION_TYPE_COUNT, 4, "criterion.ascension.brew_4_potions"));
+        cocktail.addUpgradeCriterion(2, new UnlockCriterion(Stats.CUSTOM, Ascension.BREW_POTION_TYPE_COUNT, 5, "criterion.ascension.brew_5_potions"));
+        cocktail.addUpgradeCriterion(3, new UnlockCriterion(Stats.CUSTOM, Ascension.BREW_POTION_TYPE_COUNT, 6, "criterion.ascension.brew_6_potions"));
+        cocktail.addUpgradeCriterion(4, new UnlockCriterion(Stats.CUSTOM, Ascension.BREW_POTION_TYPE_COUNT, 7, "criterion.ascension.brew_7_potions"));
+        cocktail.setBehavior(SkillActionHandler::executeCocktailBrewing);
+        register(cocktail);
+
+        // 虚空之触 (Void Touch)
+        ActiveSkill voidTouch = new ActiveSkill(
+                "void_touch",
+                Items.RECOVERY_COMPASS, // 图标
+                3, // Tier 3 (基于念力)
+                "telekinesis", // 父节点
+                2, // Max Level
+                new int[]{1, 2}, // Charges: Lv1=1, Lv2=2
+                new int[]{240, 240}, // Base Cooldown: 12s (实际会根据硬度动态调整)
+                new int[]{240, 240}, // Secondary Cooldown: 12s
+                15, 25 // Costs
+        );
+        voidTouch.addIngredient(Items.COPPER_INGOT, 1, false, 0);
+        voidTouch.addIngredient(Items.ENDER_EYE, 1, true, 1);
+        voidTouch.addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.ACTIVATE_BEACON_IN_END, 1, "criterion.ascension.activate_beacon_in_end"));
+        voidTouch.setBehavior(SkillActionHandler::executeVoidTouch);
+        register(voidTouch);
+
+        // 鳍化 (Finification)
+        ActiveSkill finification = new ActiveSkill(
+                "finification",
+                Items.PUFFERFISH, // 图标
+                3, // Tier 4
+                "brain_in_a_jar", // 父节点：缸中之脑
+                2, // Max Level
+                new int[]{2, 3}, // Charges
+                new int[]{1200, 1200}, // Cooldown: 60s
+                new int[]{1200, 1200}, // Secondary Cooldown: 60s
+                10, 20 // Costs
+        );
+        finification.addIngredient(Items.COPPER_INGOT, 1, false, 0);
+        finification.addIngredient(Items.PUFFERFISH, 1, true, 1);
+        finification.addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.FISH_PUFFERFISH_COUNT, 1, "criterion.ascension.fish_pufferfish"));
+        finification.addUpgradeCriterion(2, new UnlockCriterion(Stats.CUSTOM, Ascension.FISH_RESPIRATION_BOOK_COUNT, 1, "criterion.ascension.fish_respiration_book"));
+        finification.setBehavior(SkillActionHandler::executeFinification);
+        register(finification);
 
         // 计算布局
         calculateLayout();

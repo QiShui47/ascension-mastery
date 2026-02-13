@@ -388,6 +388,16 @@ public class PlayerEntitySkillMixin {
         }
     }
 
+    //鳍化技能的tick效果（加速消耗持续时间）
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void onTickFinification(CallbackInfo ci) {
+        PlayerEntity player = (PlayerEntity) (Object) this;
+        if (!player.getWorld().isClient) {
+            ServerPlayerEntity serverPlayer = (ServerPlayerEntity) (Object) this;
+            SkillEffectHandler.updateFinification(serverPlayer);
+        }
+    }
+
     // 御剑飞行 //
     @Unique private int swordFlightHoverTimer = 0;
     @Unique private boolean isSwordFlying = false; // 用于同步给客户端渲染
