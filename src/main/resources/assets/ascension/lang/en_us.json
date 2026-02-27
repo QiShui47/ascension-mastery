@@ -152,6 +152,8 @@
   "message.ascension.void_touch_fail": "§d[Void Touch] Target too hard or out of range.",
   "message.ascension.finification_active": "§f[Finification] You feel fins growing on your body...",
   "message.ascension.finification_expired": "§f[Finification] The fins have receded.",
+  "message.ascension.sword_of_judgment_blocked": "§f[Sword of Judgment] Target is obstructed from above, cannot strike!",
+  "message.ascension.hunter_vision_active": "§d[Hunter Vision] Allfather give me sight",
 
   "enchantment.ascension.life_steal": "Life Steal",
   "enchantment.ascension.speed_steal": "Speed Steal",
@@ -498,6 +500,18 @@
   "skill.ascension.finification.upgrade.2": "§a+ Max charge increased by 1\n§a+ Accelerate when ascending in water!",
   "skill.ascension.finification.desc.2": "§eMaterial: §fCopper Ingot / Pufferfish §7(Duration extended)\n§bEffect: §fSignificantly increase swimming speed for 20s.\n§7Accelerates when ascending in water.\n§3Secondary: §fInstantly restore 2 bubbles of Oxygen.",
 
+  "skill.ascension.sword_of_judgment": "Sword of Judgment",
+  "skill.ascension.sword_of_judgment.desc": "The pinnacle of sword mastery. Summon a heavenly greatsword, or conjure phantom blades for protection.",
+  "skill.ascension.sword_of_judgment.desc.1": "§eMaterial: §f2 Diamonds\n§bEffect: §fSummons a greatsword from the sky to punish the enemy at the crosshair.\n§3Secondary: §fSummons flying swords to orbit you, damaging any creatures that come close. Lasts 15s.",
+
+  "skill.ascension.hunter_vision": "Hunter Vision",
+  "skill.ascension.hunter_vision.desc": "1 bar, 2 bounces",
+  "skill.ascension.hunter_vision.desc.1": "§eMaterial: §fCopper Ingot / Spectral Arrow §7(Duration extended)\n§bEffect: §fHighlight friendly mobs through walls within 25 blocks for 12s.\n§3Secondary: §fBlind glowing mobs.\n§7Prevents blinded mobs from attacking or fleeing.",
+  "skill.ascension.hunter_vision.upgrade.2": "§a+ Highlights hostile mobs",
+  "skill.ascension.hunter_vision.desc.2": "§eMaterial: §fCopper Ingot / Spectral Arrow §7(Duration extended)\n§bEffect: §fHighlight non-player mobs through walls within 25 blocks for 12s.\n§3Secondary: §fBlind glowing mobs.\n§7Prevents blinded mobs from attacking or fleeing.",
+  "skill.ascension.hunter_vision.upgrade.3": "§a+ Highlights players\n§a+ Max charge increased by 1",
+  "skill.ascension.hunter_vision.desc.3": "§eMaterial: §fCopper Ingot / Spectral Arrow §7(Duration extended)\n§bEffect: §fHighlight all entities through walls within 25 blocks for 12s.\n§3Secondary: §fBlind glowing mobs.\n§7Prevents blinded mobs from attacking or fleeing.",
+
   "criterion.ascension.eat_apple": "Ate %s apples",
   "criterion.ascension.kill_cow": "Killed %s cows",
   "criterion.ascension.jump": "Jumped %s times",
@@ -564,5 +578,8 @@
   "criterion.ascension.brew_7_potions": "Brewed 7 different potions",
   "criterion.ascension.activate_beacon_in_end": "Activated a Beacon in The End",
   "criterion.ascension.fish_pufferfish": "Caught 1 Pufferfish",
-  "criterion.ascension.fish_respiration_book": "Caught an Enchanted Book with Respiration"
+  "criterion.ascension.fish_respiration_book": "Caught an Enchanted Book with Respiration",
+  "criterion.ascension.smith_netherite_sword": "Smithed a Netherite Sword using a Smithing Table",
+  "criterion.ascension.obtain_spectral_arrow": "Obtained a Spectral Arrow",
+  "criterion.ascension.glowing_at_night": "Obtained the Glowing effect at night"
 }

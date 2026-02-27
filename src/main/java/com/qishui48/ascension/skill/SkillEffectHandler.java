@@ -1,5 +1,6 @@
 package com.qishui48.ascension.skill;
 
+import com.qishui48.ascension.Ascension;
 import com.qishui48.ascension.mixin.stats.AbstractFurnaceBlockEntityAccessor;
 import com.qishui48.ascension.util.IEntityDataSaver;
 import com.qishui48.ascension.util.PacketUtils;
@@ -19,6 +20,7 @@ import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.random.Random;
@@ -438,6 +440,66 @@ public class SkillEffectHandler {
                     PacketUtils.syncSkillData(player);
                 }
             }
+        }
+    }
+
+    public static final Identifier S2C_HUNTER_VISION_ID = new Identifier(Ascension.MOD_ID, "s2c_hunter_vision");
+    public static void updateHunterVision(ServerPlayerEntity player) {
+        IEntityDataSaver data = (IEntityDataSaver) player;
+        NbtCompound nbt = data.getPersistentData();
+
+        if (!nbt.contains("hunter_vision_end")) return;
+
+        long endTime = nbt.getLong("hunter_vision_end");
+        long now = player.getWorld().getTime();
+
+        if (now >= endTime) {
+            nbt.remove("hunter_vision_end");
+            nbt.remove("hunter_vision_level");
+            // 发送空包以清除客户端残留的高亮
+            net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player, S2C_HUNTER_VISION_ID, net.fabricmc.fabric.api.networking.v1.PacketByteBufs.empty());
+            return;
+        }
+
+        // 每 5 tick 扫描一次，节省性能
+        if (now % 5 == 0) {
+            int level = nbt.getInt("hunter_vision_level");
+            List<net.minecraft.entity.LivingEntity> entities = player.getWorld().getEntitiesByClass(
+                    net.minecraft.entity.LivingEntity.class,
+                    player.getBoundingBox().expand(25.0),
+                    e -> e.isAlive() && e != player
+            );
+
+            net.minecraft.network.PacketByteBuf buf = net.fabricmc.fabric.api.networking.v1.PacketByteBufs.create();
+            int count = 0;
+            buf.writeInt(0); // 预留数量位置
+
+            for (net.minecraft.entity.LivingEntity entity : entities) {
+                int color = -1;
+
+                // 判定敌我与等级
+                if (entity instanceof net.minecraft.entity.mob.Monster) {
+                    if (level >= 2) color = 0xFF0000; // 敌对：红色
+                } else if (entity instanceof net.minecraft.entity.player.PlayerEntity) {
+                    if (level >= 3) color = 0xFFFFFF; // 玩家：白色
+                } else {
+                    color = 0x00FF00; // 非敌对：绿色
+                }
+
+                if (color != -1) {
+                    buf.writeInt(entity.getId());
+                    buf.writeInt(color);
+                    count++;
+                }
+            }
+
+            // 回填真实数量
+            int writerIndex = buf.writerIndex();
+            buf.writerIndex(0);
+            buf.writeInt(count);
+            buf.writerIndex(writerIndex);
+
+            net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player, S2C_HUNTER_VISION_ID, buf);
         }
     }
 }

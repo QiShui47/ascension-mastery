@@ -98,7 +98,7 @@ public class ModMessages {
                 // === 检查当前等级对应的升级条件 ===
                 // 0 -> 1级: 检查 level 1 的条件
                 // 1 -> 2级: 检查 level 2 的条件
-                if (!skill.checkCriteria(player, currentLevel + 1)) {
+                if (!player.isCreative() && !skill.checkCriteria(player, currentLevel + 1)) { // 创作模式下不检查条件
                     player.sendMessage(Text.translatable("message.ascension.criteria_failed").formatted(Formatting.RED), true);
                     return;
                 }
@@ -109,15 +109,17 @@ public class ModMessages {
                 IEntityDataSaver dataSaver = (IEntityDataSaver) player;
                 int currentPoints = dataSaver.getPersistentData().getInt("skill_points");
 
-                if (currentPoints < actualCost) {
+                if (!player.isCreative() && currentPoints < actualCost) { // 创作模式下不检查消耗
                     player.sendMessage(Text.translatable("message.ascension.points_needed", actualCost).formatted(Formatting.RED), true);
                     return;
                 }
 
-                // 执行交易
-                dataSaver.getPersistentData().putInt("skill_points", currentPoints - actualCost);
-                // 记录花费（以进行平衡补偿）
-                PacketUtils.recordSpending(player, actualCost);
+                // 执行交易(仅生存模式扣点数和记录)
+                if (!player.isCreative()) {
+                    dataSaver.getPersistentData().putInt("skill_points", currentPoints - actualCost);
+                    // 记录花费（以进行平衡补偿）
+                    PacketUtils.recordSpending(player, actualCost);
+                }
                 PacketUtils.unlockSkill(player, skillId);
                 SkillEffectHandler.refreshAttributes(player);
                 SkillEffectHandler.onSkillUnlocked(player, skillId);

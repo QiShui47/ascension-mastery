@@ -412,6 +412,43 @@ public class SkillRegistry {
         finification.setBehavior(SkillActionHandler::executeFinification);
         register(finification);
 
+        // 裁决之剑 (Sword of Judgment)
+        ActiveSkill swordOfJudgment = new ActiveSkill(
+                "sword_of_judgment",
+                Items.NETHERITE_SWORD, // 图标
+                5, // Tier 5
+                "sword_flight", // 父节点
+                1, // Max Level 1
+                new int[]{2}, // Charges 2
+                new int[]{1200}, // 60s
+                new int[]{1800}, // 90s
+                30 // Cost
+        );
+        swordOfJudgment.addIngredient(Items.DIAMOND, 2, false, 0); // 消耗2枚钻石
+        swordOfJudgment.addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.SMITH_NETHERITE_SWORD, 1, "criterion.ascension.smith_netherite_sword"));
+        swordOfJudgment.setBehavior(SkillActionHandler::executeSwordOfJudgment);
+        register(swordOfJudgment);
+
+        // 猎手视觉 (Hunter's Vision)
+        ActiveSkill hunterVision = new ActiveSkill(
+                "hunter_vision",
+                Items.SPYGLASS, // 图标
+                2, // Tier 2
+                "excitement", // 父节点
+                3, // Max Level 3
+                new int[]{1, 1, 2}, // Charges: Lv1=1, Lv2=1, Lv3=2
+                new int[]{600, 600, 600}, // 30s
+                new int[]{600, 600, 600}, // 30s
+                10, 15, 20 // Costs
+        );
+        hunterVision.addIngredient(Items.COPPER_INGOT, 1, false, 0);
+        hunterVision.addIngredient(Items.SPECTRAL_ARROW, 1, true, 1); // priority=true 标记为强化材料
+        hunterVision.addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.OBTAIN_SPECTRAL_ARROW, 1, "criterion.ascension.obtain_spectral_arrow"));
+        hunterVision.addUpgradeCriterion(3, new UnlockCriterion("undead_type_count", 8, "criterion.ascension.kill_undead_types"));
+        hunterVision.addUpgradeCriterion(3, new UnlockCriterion(Stats.CUSTOM, Ascension.GLOWING_AT_NIGHT, 1, "criterion.ascension.glowing_at_night"));
+        hunterVision.setBehavior(SkillActionHandler::executeHunterVision);
+        register(hunterVision);
+
         // 计算布局
         calculateLayout();
     }

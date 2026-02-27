@@ -38,6 +38,8 @@ public class AscensionClient implements ClientModInitializer {
 	private boolean wasAttackPressed = false;
 	private boolean wasUsePressed = false;
 
+	public static final java.util.Map<Integer, Integer> hunterVisionTargets = new java.util.concurrent.ConcurrentHashMap<>();
+
 	@Override
 	public void onInitializeClient() {
 		openGuiKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
@@ -150,6 +152,27 @@ public class AscensionClient implements ClientModInitializer {
 				ClientPlayNetworking.send(ModMessages.USE_ACTIVE_SKILL_ID, buf);
 			}
 		});
+
+		net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.registerGlobalReceiver(
+				new net.minecraft.util.Identifier("ascension", "s2c_hunter_vision"),
+				(client, handler, buf, responseSender) -> {
+					// 如果发来的是空包，表示技能结束
+					if (buf.readableBytes() == 0) {
+						client.execute(hunterVisionTargets::clear);
+						return;
+					}
+
+					int count = buf.readInt();
+					java.util.Map<Integer, Integer> newTargets = new java.util.HashMap<>();
+					for (int i = 0; i < count; i++) {
+						newTargets.put(buf.readInt(), buf.readInt());
+					}
+
+					client.execute(() -> {
+						hunterVisionTargets.clear();
+						hunterVisionTargets.putAll(newTargets);
+					});
+				});
 
 		// === 软依赖加载 ===
 		// 检查模组是否加载

@@ -398,6 +398,16 @@ public class PlayerEntitySkillMixin {
         }
     }
 
+    //猎手视觉技能的tick效果
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void onTickHunterVision(CallbackInfo ci) {
+        PlayerEntity player = (PlayerEntity) (Object) this;
+        if (!player.getWorld().isClient) {
+            ServerPlayerEntity serverPlayer = (ServerPlayerEntity) (Object) this;
+            SkillEffectHandler.updateHunterVision(serverPlayer);
+        }
+    }
+
     // 御剑飞行 //
     @Unique private int swordFlightHoverTimer = 0;
     @Unique private boolean isSwordFlying = false; // 用于同步给客户端渲染
@@ -840,5 +850,19 @@ public class PlayerEntitySkillMixin {
 
         // 情况 C: 是其他方块 (地毯、花、墙壁) -> 失败，交由调用者尝试下一个位置
         return false;
+    }
+
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void onTickSwordModel(CallbackInfo ci) {
+        // 1. 先转为通用的 PlayerEntity (客户端服务端都安全)
+        PlayerEntity self = (PlayerEntity) (Object) this;
+        // 2. 检查是否在客户端，如果是，直接返回，不做任何逻辑
+        // 注意：必须先检查这个，才能进行后续的 ServerPlayerEntity 转换
+        if (self.getWorld().isClient) return;
+        // 3. 确认为服务端后，安全转换
+        if (!(self instanceof ServerPlayerEntity player)) return;
+        ServerPlayerEntity serverPlayer = (ServerPlayerEntity) (Object) this;
+        // 演算当前玩家拥有的裁决之剑实体 (天降剑与旋转风暴)
+        com.qishui48.ascension.skill.SkillActionHandler.tickSkills(serverPlayer);
     }
 }

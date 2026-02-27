@@ -151,4 +151,16 @@ public abstract class LivingEntityStatMixin extends Entity {
             player.playSound(SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.PLAYERS, 0.4f, 1.0f + (points * 0.1f));
         }
     }
+    @Inject(method = "addStatusEffect(Lnet/minecraft/entity/effect/StatusEffectInstance;Lnet/minecraft/entity/Entity;)Z", at = @At("HEAD"))
+    private void onAddStatusEffect(net.minecraft.entity.effect.StatusEffectInstance effect, net.minecraft.entity.Entity source, org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Boolean> cir) {
+        if ((Object) this instanceof net.minecraft.server.network.ServerPlayerEntity player) {
+            if (effect.getEffectType() == net.minecraft.entity.effect.StatusEffects.GLOWING) {
+                // 判断是否是夜间 (13000 ~ 23000)
+                long timeOfDay = player.getWorld().getTimeOfDay() % 24000;
+                if (timeOfDay >= 13000 && timeOfDay <= 23000) {
+                    player.increaseStat(net.minecraft.stat.Stats.CUSTOM.getOrCreateStat(Ascension.GLOWING_AT_NIGHT), 1);
+                }
+            }
+        }
+    }
 }

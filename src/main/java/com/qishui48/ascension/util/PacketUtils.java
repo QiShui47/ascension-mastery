@@ -265,6 +265,7 @@ public class PacketUtils {
 
     // === 技能点平衡性检查 ===
     public static void checkSkillPointBalance(ServerPlayerEntity player) {
+        if(player.isCreative()) return; //创造模式不进行此项检查
         IEntityDataSaver dataSaver = (IEntityDataSaver) player;
         NbtCompound nbt = dataSaver.getPersistentData();
 

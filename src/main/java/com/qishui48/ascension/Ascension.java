@@ -89,6 +89,9 @@ public class Ascension implements ModInitializer {
 	public static final Identifier ACTIVATE_BEACON_IN_END = new Identifier(MOD_ID, "activate_beacon_in_end"); // 在末地激活信标
 	public static final Identifier FISH_PUFFERFISH_COUNT = new Identifier(MOD_ID, "fish_pufferfish_count"); // 钓河豚
 	public static final Identifier FISH_RESPIRATION_BOOK_COUNT = new Identifier(MOD_ID, "fish_respiration_book_count"); // 钓水下呼吸
+	public static final Identifier SMITH_NETHERITE_SWORD = new Identifier(MOD_ID, "smith_netherite_sword"); // 锻造下界合金剑
+	public static final Identifier OBTAIN_SPECTRAL_ARROW = new Identifier(MOD_ID, "obtain_spectral_arrow"); // 获取光灵箭
+	public static final Identifier GLOWING_AT_NIGHT = new Identifier(MOD_ID, "glowing_at_night"); // 晚上发光
 
 	@Override
 	public void onInitialize() {
@@ -162,6 +165,9 @@ public class Ascension implements ModInitializer {
 		Registry.register(Registries.CUSTOM_STAT, ACTIVATE_BEACON_IN_END, ACTIVATE_BEACON_IN_END);
 		Registry.register(Registries.CUSTOM_STAT, FISH_PUFFERFISH_COUNT, FISH_PUFFERFISH_COUNT);
 		Registry.register(Registries.CUSTOM_STAT, FISH_RESPIRATION_BOOK_COUNT, FISH_RESPIRATION_BOOK_COUNT);
+		Registry.register(Registries.CUSTOM_STAT, SMITH_NETHERITE_SWORD, SMITH_NETHERITE_SWORD);
+		Registry.register(Registries.CUSTOM_STAT, OBTAIN_SPECTRAL_ARROW, OBTAIN_SPECTRAL_ARROW);
+		Registry.register(Registries.CUSTOM_STAT, GLOWING_AT_NIGHT, GLOWING_AT_NIGHT);
 		SkillRegistry.registerAll();
 
 		TEMPORARY_GLOWING_BLOCK = Registry.register(Registries.BLOCK, new Identifier(MOD_ID, "temporary_light"),

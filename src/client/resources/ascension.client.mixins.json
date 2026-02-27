@@ -10,7 +10,8 @@
 		"InventoryScreenMixin",
 		"KeyboardMixin",
 		"MouseMixin",
-		"ArmorHudMixin"
+		"ArmorHudMixin",
+		"EntityHunterVisionMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

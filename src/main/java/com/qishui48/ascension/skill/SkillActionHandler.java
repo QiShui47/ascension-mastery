@@ -45,10 +45,7 @@ import net.minecraft.world.RaycastContext;
 import net.minecraft.world.World;
 import net.minecraft.world.event.GameEvent;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
 
 public class SkillActionHandler {
 
@@ -1200,6 +1197,467 @@ public class SkillActionHandler {
         player.sendMessage(Text.translatable("message.ascension.finification_active").formatted(Formatting.AQUA), true);
         PacketUtils.syncSkillData(player);
 
+        return true;
+    }
+
+    // === 用于存放正在执行的裁决技能实例 ===
+    public static final List<GiantSwordStrike> activeStrikes = new ArrayList<>();
+    public static final Map<UUID, SwordVortex> activeVortices = new java.util.HashMap<>();
+
+    // 每一 Tick 调用以演算技能实体
+    public static void tickSkills(ServerPlayerEntity player) {
+        //  垃圾回收：每秒(20 ticks)清理一次意外遗留的裁决之剑模型
+        if (player.age % 20 == 0) {
+            net.minecraft.util.math.Box box = player.getBoundingBox().expand(64.0);
+            List<net.minecraft.entity.decoration.DisplayEntity.ItemDisplayEntity> displays = player.getWorld().getEntitiesByClass(
+                    net.minecraft.entity.decoration.DisplayEntity.ItemDisplayEntity.class, box,
+                    e -> e.getCommandTags().contains("ascension_judgment") // 只找我们打过标签的实体
+            );
+
+            for (var display : displays) {
+                boolean isManaged = false;
+                for (SwordVortex v : activeVortices.values()) {
+                    if (v.swords.contains(display)) { isManaged = true; break; }
+                }
+                if (!isManaged) {
+                    for (GiantSwordStrike s : activeStrikes) {
+                        if (s.display == display) { isManaged = true; break; }
+                    }
+                }
+                // 如果发现这个实体既不在活跃的风暴里，也不在活跃的天降巨剑里，说明是残留的，删掉它！
+                if (!isManaged) {
+                    display.discard();
+                }
+            }
+        }
+        // 1. 演算该玩家拥有的剑刃风暴
+        SwordVortex vortex = activeVortices.get(player.getUuid());
+        if (vortex != null) {
+            if (!vortex.tick(player)) {
+                activeVortices.remove(player.getUuid());
+            }
+        }
+
+        // 2. 演算该玩家召唤的天降巨剑
+        java.util.Iterator<GiantSwordStrike> it = activeStrikes.iterator();
+        while (it.hasNext()) {
+            GiantSwordStrike strike = it.next();
+            if (strike.owner.getUuid().equals(player.getUuid())) {
+                if (!strike.tick()) {
+                    it.remove();
+                }
+            }
+        }
+    }
+
+    // === 裁决之剑 (Sword of Judgment) ===
+    public static boolean executeSwordOfJudgment(ServerPlayerEntity player, ActiveSkill skill, boolean isSecondary) {
+        World world = player.getWorld();
+
+        // 检查材料
+        ActiveSkill.CastIngredient usedIngredient = findMaterial(player, skill);
+        if (usedIngredient == null && !player.isCreative()) {
+            player.sendMessage(Text.translatable("message.ascension.no_material").formatted(Formatting.RED), true);
+            return false;
+        }
+
+        if (isSecondary) {
+            // === 次要效果：剑刃漩涡 ===
+            consumeMaterial(player, usedIngredient);
+            PacketUtils.consumeSkillCharge(player, skill, true);
+
+            net.minecraft.item.Item[] tiers = { Items.WOODEN_SWORD, Items.STONE_SWORD, Items.GOLDEN_SWORD, Items.IRON_SWORD, Items.DIAMOND_SWORD, Items.NETHERITE_SWORD };
+            int bestTier = 0;
+            for (int i = 0; i < player.getInventory().size(); i++) {
+                ItemStack stack = player.getInventory().getStack(i);
+                for (int t = 0; t < tiers.length; t++) {
+                    if (stack.isOf(tiers[t]) && t > bestTier) {
+                        bestTier = t;
+                    }
+                }
+            }
+
+            SwordVortex vortex = new SwordVortex();
+            vortex.owner = player;
+            vortex.bestTier = bestTier;
+            int count = Math.max(40, Math.min(60, (int)(world.random.nextGaussian() * 5 + 50)));
+            vortex.remainingSwords = count;
+
+            for (int i = 0; i < count; i++) {
+                net.minecraft.entity.decoration.DisplayEntity.ItemDisplayEntity sword = net.minecraft.entity.EntityType.ITEM_DISPLAY.create(world);
+                if (sword != null) {
+                    int randomTier = world.random.nextInt(bestTier + 1);
+                    sword.setPosition(player.getX(), player.getY() + 1, player.getZ());
+
+                    // 【关键修复1】必须先生成实体，后注入 NBT 才能强行同步给客户端
+                    world.spawnEntity(sword);
+                    vortex.swords.add(sword);
+
+                    sword.addCommandTag("ascension_judgment");
+                    NbtCompound nbt = new NbtCompound();
+                    sword.writeNbt(nbt);
+
+                    NbtCompound itemNbt = new NbtCompound();
+                    new ItemStack(tiers[randomTier]).writeNbt(itemNbt);
+                    nbt.put("item", itemNbt);
+                    nbt.putString("item_display", "fixed");
+
+                    // 补全所有变换数据，缺一不可
+                    NbtCompound transformNbt = new NbtCompound();
+
+                    net.minecraft.nbt.NbtList scaleList = new net.minecraft.nbt.NbtList();
+                    scaleList.add(net.minecraft.nbt.NbtFloat.of(0.6f)); // 剑刃风暴尺寸
+                    scaleList.add(net.minecraft.nbt.NbtFloat.of(0.6f));
+                    scaleList.add(net.minecraft.nbt.NbtFloat.of(0.6f));
+                    transformNbt.put("scale", scaleList);
+
+                    // 剑刃风暴旋转：逆时针转 -45度（水平向右）
+                    net.minecraft.nbt.NbtList rotList = new net.minecraft.nbt.NbtList();
+                    rotList.add(net.minecraft.nbt.NbtFloat.of(0f));
+                    rotList.add(net.minecraft.nbt.NbtFloat.of(0f));
+                    rotList.add(net.minecraft.nbt.NbtFloat.of(-0.38268f)); // Z
+                    rotList.add(net.minecraft.nbt.NbtFloat.of(0.92388f));  // W
+                    transformNbt.put("left_rotation", rotList);
+
+                    // 补充默认的平移和右旋转防覆盖
+                    net.minecraft.nbt.NbtList transList = new net.minecraft.nbt.NbtList();
+                    transList.add(net.minecraft.nbt.NbtFloat.of(0f)); transList.add(net.minecraft.nbt.NbtFloat.of(0f)); transList.add(net.minecraft.nbt.NbtFloat.of(0f));
+                    transformNbt.put("translation", transList);
+                    net.minecraft.nbt.NbtList rightRotList = new net.minecraft.nbt.NbtList();
+                    rightRotList.add(net.minecraft.nbt.NbtFloat.of(0f)); rightRotList.add(net.minecraft.nbt.NbtFloat.of(0f)); rightRotList.add(net.minecraft.nbt.NbtFloat.of(0f)); rightRotList.add(net.minecraft.nbt.NbtFloat.of(1f));
+                    transformNbt.put("right_rotation", rightRotList);
+
+                    nbt.put("transformation", transformNbt);
+                    nbt.putInt("interpolation_duration", 0); // 必须为0以瞬间生效
+                    sword.readNbt(nbt);
+                }
+            }
+            activeVortices.put(player.getUuid(), vortex);
+
+            updateSkillSlotBus(player, skill.id, 300, world.getTime() + 300);
+            PacketUtils.syncSkillData(player);
+            SkillSoundHandler.playSkillSound(player, SkillSoundHandler.SoundType.ACTIVATE);
+            return true;
+
+        } else {
+            // === 主要效果：天降巨剑 ===
+            HitResult hit = player.raycast(100.0, 0.0f, false);
+            BlockPos targetPos = BlockPos.ofFloored(hit.getPos());
+
+            if (!world.isSkyVisible(targetPos.up())) {
+                player.sendMessage(Text.translatable("message.ascension.sword_of_judgment_blocked").formatted(Formatting.RED), true);
+                return false;
+            }
+
+            consumeMaterial(player, usedIngredient);
+            PacketUtils.consumeSkillCharge(player, skill, false);
+
+            GiantSwordStrike strike = new GiantSwordStrike();
+            strike.owner = player;
+            strike.target = targetPos;
+            strike.currentY = 319.0f;
+            strike.isTrident = world.isThundering();
+
+            net.minecraft.entity.decoration.DisplayEntity.ItemDisplayEntity display = net.minecraft.entity.EntityType.ITEM_DISPLAY.create(world);
+            if (display != null) {
+                ItemStack dropItem = new ItemStack(strike.isTrident ? Items.TRIDENT : Items.DIAMOND_SWORD);
+                if (strike.isTrident) {
+                    net.minecraft.enchantment.EnchantmentHelper.enchant(world.random, dropItem, 30, true);
+                }
+                strike.dropItem = dropItem;
+
+                display.setPosition(targetPos.getX() + 0.5, strike.currentY, targetPos.getZ() + 0.5);
+
+                // 【关键修复2】先生成实体，后写入 NBT
+                world.spawnEntity(display);
+                strike.display = display;
+                activeStrikes.add(strike);
+
+                display.addCommandTag("ascension_judgment");
+                NbtCompound nbt = new NbtCompound();
+                display.writeNbt(nbt);
+
+                NbtCompound itemNbt = new NbtCompound();
+                dropItem.writeNbt(itemNbt);
+                nbt.put("item", itemNbt);
+                nbt.putString("item_display", "fixed");
+
+                NbtCompound transformNbt = new NbtCompound();
+
+                net.minecraft.nbt.NbtList scaleList = new net.minecraft.nbt.NbtList();
+                scaleList.add(net.minecraft.nbt.NbtFloat.of(40.0f));
+                scaleList.add(net.minecraft.nbt.NbtFloat.of(40.0f));
+                scaleList.add(net.minecraft.nbt.NbtFloat.of(40.0f));
+                transformNbt.put("scale", scaleList);
+
+                // 天降巨剑旋转：逆时针转 135度（竖直向下）
+                net.minecraft.nbt.NbtList rotList = new net.minecraft.nbt.NbtList();
+                rotList.add(net.minecraft.nbt.NbtFloat.of(0f));
+                rotList.add(net.minecraft.nbt.NbtFloat.of(0f));
+                rotList.add(net.minecraft.nbt.NbtFloat.of(-0.92388f));  // Z
+                rotList.add(net.minecraft.nbt.NbtFloat.of(0.38268f));  // W
+                transformNbt.put("left_rotation", rotList);
+
+                // 补充默认的平移和右旋转防覆盖
+                net.minecraft.nbt.NbtList transList = new net.minecraft.nbt.NbtList();
+                transList.add(net.minecraft.nbt.NbtFloat.of(0f)); transList.add(net.minecraft.nbt.NbtFloat.of(0f)); transList.add(net.minecraft.nbt.NbtFloat.of(0f));
+                transformNbt.put("translation", transList);
+                net.minecraft.nbt.NbtList rightRotList = new net.minecraft.nbt.NbtList();
+                rightRotList.add(net.minecraft.nbt.NbtFloat.of(0f)); rightRotList.add(net.minecraft.nbt.NbtFloat.of(0f)); rightRotList.add(net.minecraft.nbt.NbtFloat.of(0f)); rightRotList.add(net.minecraft.nbt.NbtFloat.of(1f));
+                transformNbt.put("right_rotation", rightRotList);
+
+                nbt.put("transformation", transformNbt);
+                nbt.putInt("interpolation_duration", 0);
+                display.readNbt(nbt);
+            }
+            return true;
+        }
+    }
+
+    // === 天降巨剑演算类 ===
+    public static class GiantSwordStrike {
+        ServerPlayerEntity owner;
+        BlockPos target;
+        net.minecraft.entity.decoration.DisplayEntity.ItemDisplayEntity display;
+        ItemStack dropItem;
+        float currentY;
+        float velocity = 0.5f;
+        boolean isTrident;
+        int phase = 0; // 0=下落, 1=缩小
+        int shrinkTicks = 0;
+
+        public boolean tick() {
+            World world = owner.getWorld();
+            if (display == null || display.isRemoved()) return false;
+
+            if (phase == 0) {
+                velocity += 0.2f;
+                currentY -= velocity;
+
+                // [修改] 目标落地高度：地面高度 + 巨剑当前尺寸的一半 (40倍 / 2 = 20格) 因为旋转所以需要×根号二
+                float groundY = target.getY() + 28.0f;
+
+                if (currentY <= groundY) {
+                    currentY = groundY;
+                    display.requestTeleport(target.getX() + 0.5, currentY, target.getZ() + 0.5);
+
+                    float fallDist = 319.0f - target.getY();
+                    float dmg = Math.min(40.0f, (fallDist - 2.0f) * 2.0f);
+                    if (dmg < 0) dmg = 0;
+
+                    Box box = new Box(target).expand(3.0);
+                    List<LivingEntity> targets = world.getEntitiesByClass(LivingEntity.class, box, e -> e.isAlive() && e != owner);
+                    for (LivingEntity e : targets) {
+                        e.damage(world.getDamageSources().fallingAnvil(display), dmg);
+                    }
+
+                    world.playSound(null, target, SoundEvents.ENTITY_GENERIC_EXPLODE, SoundCategory.PLAYERS, 2.0f, 0.5f);
+                    if (isTrident) {
+                        world.playSound(null, target, SoundEvents.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.PLAYERS, 2.0f, 1.0f);
+                        ((ServerWorld) world).spawnParticles(ParticleTypes.FLASH, target.getX() + 0.5, target.getY() + 1, target.getZ() + 0.5, 1, 0, 0, 0, 0);
+                    }
+                    ((ServerWorld) world).spawnParticles(ParticleTypes.EXPLOSION, target.getX() + 0.5, target.getY(), target.getZ() + 0.5, 10, 2, 0, 2, 0.1);
+
+                    phase = 1;
+                    shrinkTicks = 100;
+                } else {
+                    display.requestTeleport(target.getX() + 0.5, currentY, target.getZ() + 0.5);
+                }
+            } else if (phase == 1) {
+                shrinkTicks--;
+
+                float scale = (shrinkTicks / 100.0f) * 40.0f;
+                if (scale < 1.0f) scale = 1.0f;
+
+                // [修改] 随着巨剑缩小，动态下调它的高度，让剑尖始终贴在地面！
+                display.requestTeleport(target.getX() + 0.5, target.getY() + (scale / 1.414f), target.getZ() + 0.5);
+
+                NbtCompound nbt = new NbtCompound();
+                display.writeNbt(nbt);
+
+                NbtCompound transformNbt = new NbtCompound();
+
+                net.minecraft.nbt.NbtList scaleList = new net.minecraft.nbt.NbtList();
+                scaleList.add(net.minecraft.nbt.NbtFloat.of(scale));
+                scaleList.add(net.minecraft.nbt.NbtFloat.of(scale));
+                scaleList.add(net.minecraft.nbt.NbtFloat.of(scale));
+                transformNbt.put("scale", scaleList);
+
+                // [修改] 缩小过程中的旋转也必须同步修改为 225 度
+                org.joml.Quaternionf q = new org.joml.Quaternionf().rotationXYZ(
+                        0f, 0f, (float) Math.toRadians(225)
+                );
+                net.minecraft.nbt.NbtList rotList = new net.minecraft.nbt.NbtList();
+                rotList.add(net.minecraft.nbt.NbtFloat.of(q.x()));
+                rotList.add(net.minecraft.nbt.NbtFloat.of(q.y()));
+                rotList.add(net.minecraft.nbt.NbtFloat.of(q.z()));
+                rotList.add(net.minecraft.nbt.NbtFloat.of(q.w()));
+                transformNbt.put("left_rotation", rotList);
+
+                net.minecraft.nbt.NbtList transList = new net.minecraft.nbt.NbtList();
+                transList.add(net.minecraft.nbt.NbtFloat.of(0f));
+                transList.add(net.minecraft.nbt.NbtFloat.of(0f));
+                transList.add(net.minecraft.nbt.NbtFloat.of(0f));
+                transformNbt.put("translation", transList);
+                net.minecraft.nbt.NbtList rightRotList = new net.minecraft.nbt.NbtList();
+                rightRotList.add(net.minecraft.nbt.NbtFloat.of(0f));
+                rightRotList.add(net.minecraft.nbt.NbtFloat.of(0f));
+                rightRotList.add(net.minecraft.nbt.NbtFloat.of(0f));
+                rightRotList.add(net.minecraft.nbt.NbtFloat.of(1f));
+                transformNbt.put("right_rotation", rightRotList);
+
+                nbt.put("transformation", transformNbt);
+
+                nbt.putInt("interpolation_duration", 10);
+                nbt.putInt("start_interpolation", 0);
+                nbt.putInt("teleport_duration", 10);
+
+                display.readNbt(nbt);
+
+                if (shrinkTicks <= 0) {
+                    display.discard();
+                    net.minecraft.entity.ItemEntity drop = new net.minecraft.entity.ItemEntity(world, target.getX() + 0.5, target.getY() + 1, target.getZ() + 0.5, this.dropItem);
+                    drop.setToDefaultPickupDelay();
+                    world.spawnEntity(drop);
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    // === 剑刃漩涡演算类 ===
+    public static class SwordVortex {
+        ServerPlayerEntity owner;
+        List<net.minecraft.entity.decoration.DisplayEntity.ItemDisplayEntity> swords = new ArrayList<>();
+        int remainingSwords;
+        int bestTier;
+        int ticksLeft = 300; // 15秒 (300 ticks)
+
+        public boolean tick(ServerPlayerEntity player) {
+            ticksLeft--;
+            if (ticksLeft <= 0 || remainingSwords <= 0 || !player.isAlive()) {
+                swords.forEach(net.minecraft.entity.Entity::discard);
+                return false;
+            }
+
+            // 丢弃多余的剑模型
+            while (swords.size() > remainingSwords) {
+                swords.get(swords.size() - 1).discard();
+                swords.remove(swords.size() - 1);
+            }
+
+            double cx = player.getX();
+            double cy = player.getY() + 1.0;
+            double cz = player.getZ();
+
+            // 更新剑的位置与旋转
+            for (int i = 0; i < swords.size(); i++) {
+                net.minecraft.entity.decoration.DisplayEntity.ItemDisplayEntity sword = swords.get(i);
+                double angle = (player.age * 12.0) + (360.0 / swords.size()) * i;
+                double rad = Math.toRadians(angle);
+                double x = cx + Math.cos(rad) * 5.0;
+                double z = cz + Math.sin(rad) * 5.0;
+                double y = cy + Math.sin(player.age * 0.15 + i) * 1.5 + 1.5f; // 上下浮动
+
+                sword.requestTeleport(x, y, z);
+                sword.setYaw((float) angle + 90f); // 剑尖顺着旋转方向
+                sword.setPitch(0f);
+            }
+
+            // 碰撞检测
+            World world = player.getWorld();
+            Box box = player.getBoundingBox().expand(5.5);
+            List<LivingEntity> enemies = world.getEntitiesByClass(LivingEntity.class, box, e -> e.isAlive() && e != player);
+
+            int[] damages = { 4, 5, 4, 6, 7, 8 }; // 各材质基础伤害
+
+            for (LivingEntity enemy : enemies) {
+                if (enemy.timeUntilRegen <= 10 && enemy.distanceTo(player) <= 3.5) {
+                    // 随机抽取一把剑的伤害
+                    int randomTier = world.random.nextInt(bestTier + 1);
+                    float dmg = damages[randomTier] / 1.5f;
+
+                    enemy.damage(world.getDamageSources().magic(), dmg);
+                    Vec3d kb = enemy.getPos().subtract(player.getPos()).normalize().multiply(0.5);
+                    enemy.addVelocity(kb.x, 0.2, kb.z);
+                    enemy.velocityModified = true;
+
+                    remainingSwords -= world.random.nextBetween(1, 3);
+                    world.playSound(null, enemy.getBlockPos(), SoundEvents.ENTITY_PLAYER_ATTACK_SWEEP, SoundCategory.PLAYERS, 1.0f, 1.2f);
+
+                    if (remainingSwords <= 0) break;
+                }
+            }
+            return true;
+        }
+    }
+
+    // 猎手视觉
+    public static boolean executeHunterVision(ServerPlayerEntity player, ActiveSkill skill, boolean isSecondary) {
+        int level = PacketUtils.getSkillLevel(player, skill.id);
+        if (level <= 0) return false;
+
+        World world = player.getWorld();
+
+        ActiveSkill.CastIngredient usedIngredient = findMaterial(player, skill);
+        if (usedIngredient == null && !player.isCreative()) {
+            player.sendMessage(Text.translatable("message.ascension.no_material").formatted(Formatting.RED), true);
+            return false;
+        }
+
+        boolean isBoosted = (usedIngredient != null && usedIngredient.isPriority);
+
+        if (isSecondary) {
+            // === 次要效果：致盲发光生物 ===
+            consumeMaterial(player, usedIngredient);
+            PacketUtils.consumeSkillCharge(player, skill, true);
+
+            // 寻找25格内具有发光效果的生物
+            List<LivingEntity> targets = world.getEntitiesByClass(
+                    LivingEntity.class,
+                    player.getBoundingBox().expand(25.0),
+                    e -> e.isAlive() && e != player && e.hasStatusEffect(StatusEffects.GLOWING)
+            );
+
+            for (LivingEntity target : targets) {
+                // 持续时间：4-6秒 (80-120 ticks)，强化增加 50% (120-180 ticks)
+                int minTicks = isBoosted ? 120 : 80;
+                int maxTicks = isBoosted ? 180 : 120;
+                int duration = world.random.nextBetween(minTicks, maxTicks);
+
+                target.addStatusEffect(new StatusEffectInstance(StatusEffects.BLINDNESS, duration, 0));
+                target.setAttacker(null); // 清除受击源，打断逃跑行为
+
+                // 清除仇恨与逃跑AI
+                if (target instanceof net.minecraft.entity.mob.MobEntity mob) {
+                    mob.setTarget(null);
+                    mob.getNavigation().stop();
+                }
+            }
+
+            player.getWorld().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ENTITY_ILLUSIONER_CAST_SPELL, SoundCategory.PLAYERS, 1.0f, 1.0f);
+            return true;
+        }
+
+        // === 主要效果：开启猎手视觉 ===
+        consumeMaterial(player, usedIngredient);
+        PacketUtils.consumeSkillCharge(player, skill, false);
+
+        long duration = isBoosted ? 360 : 240; // 12秒 或 18秒 (强化+50%)
+        long now = world.getTime();
+        long endTime = now + duration;
+
+        IEntityDataSaver data = (IEntityDataSaver) player;
+        NbtCompound nbt = data.getPersistentData();
+        nbt.putLong("hunter_vision_end", endTime);
+        nbt.putInt("hunter_vision_level", level);
+
+        updateSkillSlotBus(player, skill.id, (int)duration, endTime);
+        PacketUtils.syncSkillData(player);
+
+        SkillSoundHandler.playSkillSound(player, SkillSoundHandler.SoundType.ACTIVATE);
+        player.sendMessage(Text.translatable("message.ascension.hunter_vision_active").formatted(Formatting.GREEN), true);
         return true;
     }
 
