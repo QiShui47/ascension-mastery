@@ -4,6 +4,8 @@ import com.qishui48.ascension.Ascension;
 import com.qishui48.ascension.mixin.stats.AbstractFurnaceBlockEntityAccessor;
 import com.qishui48.ascension.util.IEntityDataSaver;
 import com.qishui48.ascension.util.PacketUtils;
+import com.qishui48.ascension.util.SkillHungerManager;
+import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.AbstractFurnaceBlockEntity;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.LivingEntity;
@@ -21,6 +23,7 @@ import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.math.random.Random;
@@ -222,6 +225,8 @@ public class SkillEffectHandler {
             tickWraithWrath(player);
             tickBlink(player);
             tickSteadfast(player);
+            updateTidalWave(player);
+            SkillHungerManager.tick(player); // 注册饥饿度调度器
         }
     }
 
@@ -500,6 +505,118 @@ public class SkillEffectHandler {
             buf.writerIndex(writerIndex);
 
             net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player, S2C_HUNTER_VISION_ID, buf);
+        }
+    }
+
+    public static void updateTidalWave(ServerPlayerEntity player) {
+        IEntityDataSaver data = (IEntityDataSaver) player;
+        NbtCompound nbt = data.getPersistentData();
+
+        if (!nbt.contains("tidal_wave_end")) return;
+
+        long endTime = nbt.getLong("tidal_wave_end");
+        long now = player.getWorld().getTime();
+
+        if (now >= endTime) {
+            nbt.remove("tidal_wave_end");
+            nbt.remove("tidal_wave_level");
+            if (player.hasNoGravity()) player.setNoGravity(false);
+            PacketUtils.syncSkillData(player);
+            player.sendMessage(Text.translatable("message.ascension.tidal_wave_expired").formatted(Formatting.GRAY), true);
+            return;
+        }
+
+        int level = nbt.getInt("tidal_wave_level");
+        World world = player.getWorld();
+        BlockPos playerPos = player.getBlockPos();
+
+        double targetY = -1;
+
+        // 扫描脚底 3x3 范围，防止方块边缘判定丢失
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                for (int dy = 0; dy >= -3; dy--) {
+                    BlockPos checkPos = playerPos.add(dx, dy, dz);
+                    if (world.getBlockState(checkPos).isOf(net.minecraft.block.Blocks.WATER)) {
+                        targetY = Math.max(targetY, checkPos.getY() + 1.6);
+                        break; // 找到该垂直列最高的水面就停止深入
+                    }
+                }
+            }
+        }
+
+        if (targetY != -1) {
+            double currentY = player.getY();
+            double velY = player.getVelocity().y;
+
+            // 如果玩家拥有极大的向上速度（例如刚放了次要效果），解除悬浮锁定让其飞天
+            if (velY > 4) {
+                if (player.hasNoGravity()) player.setNoGravity(false);
+            }
+            // 1. 绝对平稳的悬浮逻辑
+            else if (currentY >= targetY - 0.6 && currentY <= targetY + 0.6) {
+                if (!player.hasNoGravity()) player.setNoGravity(true);
+
+                if (Math.abs(velY) > 0.0) {
+                    player.setVelocity(player.getVelocity().x, 0, player.getVelocity().z);
+                    player.velocityModified = true;
+                }
+                player.fallDistance = 0;
+
+                // === 2. 冲浪物理引擎 (兼顾行走与疾跑) ===
+                Vec3d vel = player.getVelocity();
+                double horizSpeed = Math.sqrt(vel.x * vel.x + vel.z * vel.z);
+
+                // 判定玩家是否有移动意图 (原版在空中无按键时速度极小，>0.015说明按了移动键)
+                if (horizSpeed > 0.015) {
+                    Vec3d horizDir = new Vec3d(vel.x, 0, vel.z).normalize();
+                    Vec3d lookDir = new Vec3d(player.getRotationVector().x, 0, player.getRotationVector().z).normalize();
+
+                    // 速度方向与视线方向没有完全相反（玩家没有试图急停后退）
+                    if (horizDir.dotProduct(lookDir) > -0.5) {
+                        // 动态速度分配：行走为 0.26(轻快)，疾跑为 0.42(极速)
+                        double targetSpeed = player.isSprinting() ? 21 : 14;
+
+                        player.setVelocity(horizDir.x * targetSpeed, 0, horizDir.z * targetSpeed);
+                        player.velocityModified = true;
+
+                        ((ServerWorld) world).spawnParticles(ParticleTypes.SPLASH,
+                                player.getX(), targetY - 0.6, player.getZ(), player.isSprinting() ? 5 : 2, 0.2, 0.1, 0.2, 0.05);
+                    } else {
+                        // 玩家试图急停或后退，提供巨大的水面摩擦力刹车
+                        player.setVelocity(vel.x * 0.7, 0, vel.z * 0.7);
+                        player.velocityModified = true;
+                    }
+                }
+            }
+            // 如果由于地形高低差掉入水中，将其平稳推起
+            else if (currentY < targetY - 0.2) {
+                player.setNoGravity(false);
+                player.addVelocity(0, 0.15, 0);
+                player.velocityModified = true;
+                player.fallDistance = 0;
+                // (此处不再铺设水源)
+            } else {
+                if (player.hasNoGravity()) player.setNoGravity(false);
+            }
+
+            // 满级 (Level 2) 击退效果
+            if (level >= 2 && now % 10 == 0) {
+                List<LivingEntity> enemies = world.getEntitiesByClass(LivingEntity.class, player.getBoundingBox().expand(5.0),
+                        e -> e.isAlive() && e != player && e instanceof net.minecraft.entity.mob.Monster);
+
+                for (LivingEntity enemy : enemies) {
+                    Vec3d knockback = enemy.getPos().subtract(player.getPos()).normalize().multiply(1.5);
+                    enemy.addVelocity(knockback.x, 0.5, knockback.z);
+                    enemy.velocityModified = true;
+
+                    ((ServerWorld) world).spawnParticles(ParticleTypes.CLOUD,
+                            enemy.getX(), enemy.getY() + 1, enemy.getZ(), 5, 0.5, 0.5, 0.5, 0.1);
+                }
+            }
+        } else {
+            // 离开水面区域，恢复正常重力
+            if (player.hasNoGravity()) player.setNoGravity(false);
         }
     }
 }

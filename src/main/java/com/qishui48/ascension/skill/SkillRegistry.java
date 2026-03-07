@@ -15,25 +15,41 @@ public class SkillRegistry {
         SKILLS.clear();
 
         // === Root (Tier 0) ===
-        register(new Skill("root", Items.BOOK, 0, null, 1, 1));
+        //register(new Skill("root", Items.BOOK, 0, null, 1, 1));
 
         // === Tier 1 ===
-        register(new Skill("combat", Items.IRON_SWORD, 1, "root", 1, 2));
-        register(new Skill("survival",  Items.APPLE, 1, "root", 1, 2));
-        register(new Skill("mining",  Items.WOODEN_PICKAXE, 1, "root", 1, 2));
-        register(new Skill("miscellaneous",  Items.STICK, 1, "root", 1, 2));
+        register(new Skill("combat", Items.IRON_SWORD, 1, null, 1, 2));
+        register(new Skill("survival",  Items.APPLE, 1, null, 1, 2));
+        register(new Skill("mining",  Items.WOODEN_PICKAXE, 1, null, 1, 2));
+        register(new Skill("miscellaneous",  Items.STICK, 1, null, 1, 2));
+        register(new Skill("instinct", Items.KNOWLEDGE_BOOK, 1, null, 1, 2));
+
+        // 熟能生巧 (Practice Makes Perfect)
+        register(new Skill("practice_makes_perfect", Items.EXPERIENCE_BOTTLE, 2, "instinct", 4, 2, 2, 2, 2)
+                // 使用 NBT 追踪解锁的主动技能数量
+                .addCriterion(new UnlockCriterion("unlocked_active_skills_count", 4, "criterion.ascension.unlock_4_active_skills"))
+                .addUpgradeCriterion(2, new UnlockCriterion("unlocked_active_skills_count", 5, "criterion.ascension.unlock_5_active_skills"))
+                .addUpgradeCriterion(3, new UnlockCriterion("unlocked_active_skills_count", 6, "criterion.ascension.unlock_6_active_skills"))
+                .addUpgradeCriterion(4, new UnlockCriterion("unlocked_active_skills_count", 7, "criterion.ascension.unlock_7_active_skills")));
+
+        // 炼金术师 (Alchemist)
+        register(new Skill("alchemist", Items.BREWING_STAND, 2, "instinct", 4, 10, 15, 20, 25)
+                .addCriterion(new UnlockCriterion("collected_unique_items", 60, "criterion.ascension.collect_items"))
+                .addUpgradeCriterion(2, new UnlockCriterion("collected_unique_items", 80, "criterion.ascension.collect_items"))
+                .addUpgradeCriterion(3, new UnlockCriterion("collected_unique_items", 100, "criterion.ascension.collect_items"))
+                .addUpgradeCriterion(4, new UnlockCriterion("collected_unique_items", 120, "criterion.ascension.collect_items")));
 
         // ==========================================================
         // === Survival Branch (生存系) ===
         // ==========================================================
 
         // 龙舟划手 (Tier 2)
-        register(new Skill("dragon_boat_rower", Items.OAK_BOAT, 2, "survival", 2, 10, 15)
+        register(new Skill("dragon_boat_rower", Items.OAK_BOAT, 2, "survival", 2, 3, 3)
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Stats.SWIM_ONE_CM, 10000, "criterion.ascension.move_underwater").setDisplayDivisor(100.0))
                 .addUpgradeCriterion(2, new UnlockCriterion(Stats.CUSTOM, Ascension.BOAT_ON_ICE, 10000, "criterion.ascension.boat_on_ice").setDisplayDivisor(100.0)));
 
         // 缸中之脑 (Tier 3)
-        register(new Skill("brain_in_a_jar", Items.GLASS, 3, "dragon_boat_rower", 5, 10, 10, 15, 15, 15)
+        register(new Skill("brain_in_a_jar", Items.GLASS, 3, "dragon_boat_rower", 5, 5, 5, 5, 5, 10)
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.BREW_WATER_BREATHING, 1, "criterion.ascension.brew_water_breathing"))
                 .addUpgradeCriterion(3, new UnlockCriterion(Stats.CUSTOM, Ascension.CRAFT_WATER_BREATHING_ARROW, 1, "criterion.ascension.craft_tipped_arrow"))
                 .addUpgradeCriterion(5, new UnlockCriterion(Stats.PICKED_UP, Items.TRIDENT, 1, "criterion.ascension.obtain_trident")));
@@ -42,12 +58,12 @@ public class SkillRegistry {
         register(new Skill("adrenaline_burst", Items.GLISTERING_MELON_SLICE, 2, "survival", 2, 5));
 
         // 亢奋 (Tier 3)
-        register(new Skill("excitement", Items.SUGAR, 3, "adrenaline_burst", 2, 10, 15)
+        register(new Skill("excitement", Items.SUGAR, 3, "adrenaline_burst", 2, 5, 10)
                 .addCriterion(new UnlockCriterion(Stats.USED, Items.BREAD, 16, "criterion.ascension.eat_bread"))
                 .addUpgradeCriterion(2, new UnlockCriterion(Stats.USED, Items.POISONOUS_POTATO, 1, "criterion.ascension.eat_poison_potato")));
 
         // 生命提升 (Tier 4) - 保持 OR 关系
-        register(new Skill("health_boost", Items.GOLDEN_APPLE, 4, "excitement", 5, 5, 15, 25, 35, 45)
+        register(new Skill("health_boost", Items.GOLDEN_APPLE, 4, "excitement", 5, 5, 10, 15, 20, 25)
                 .addCriterion(new UnlockCriterion(Stats.USED, Items.APPLE, 1, "criterion.ascension.eat_apple"))
                 .addCriterion(new UnlockCriterion(Stats.KILLED, EntityType.COW, 1, "criterion.ascension.kill_cow"))
                 .addUpgradeCriterion(5, new UnlockCriterion(Stats.CUSTOM, Ascension.FIND_MUSHROOM_FIELDS, 1, "criterion.ascension.find_mushroom_island")));
@@ -62,12 +78,12 @@ public class SkillRegistry {
                 .addUpgradeCriterion(3, new UnlockCriterion(Stats.CUSTOM, Ascension.TRAVEL_END, 200000, "criterion.ascension.travel_end").setDisplayDivisor(100.0)));
 
         // 御剑飞行 (Sword Flight)
-        register(new Skill("sword_flight", Items.DIAMOND_SWORD, 4, "human_dynamo", 2, 20, 30)
+        register(new Skill("sword_flight", Items.DIAMOND_SWORD, 4, "human_dynamo", 2, 15, 15)
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.SURVIVE_ELYTRA_CRASH, 1, "criterion.ascension.survive_elytra_crash"))
                 .addUpgradeCriterion(2, new UnlockCriterion(Stats.CUSTOM, Ascension.ENCHANT_SWORD_THREE_TIMES, 1, "criterion.ascension.enchant_sword_three_times")));
 
         // 糖分主理人 (Sugar Master) - 应用 AND 逻辑
-        register(new Skill("sugar_master", Items.CAKE, 2, "survival", 3, 5, 10, 15)
+        register(new Skill("sugar_master", Items.CAKE, 2, "survival", 3, 5, 5, 10)
                 .addCriteriaGroup( // 1级条件组 (AND)
                         new UnlockCriterion(Stats.CUSTOM, Ascension.COLLECT_CROP_VARIANTS, 4, "criterion.ascension.collect_crops"),
                         new UnlockCriterion(Stats.CRAFTED, Items.BREAD, 32, "criterion.ascension.craft_bread")
@@ -83,14 +99,14 @@ public class SkillRegistry {
                 .addUpgradeCriterion(3, new UnlockCriterion(Stats.CUSTOM, Ascension.TRAVEL_NETHER, 100000, "criterion.ascension.travel_nether").setDisplayDivisor(100.0)));
 
         // 饥饿耐受 (Tier 3)
-        register(new Skill("hunger_tolerance", Items.COOKED_CHICKEN, 3, "hotpot_diner", 1, 15)
+        register(new Skill("hunger_tolerance", Items.COOKED_CHICKEN, 3, "hotpot_diner", 1, 20)
                 .withVisualParent("sugar_master"));
 
         // 饥饿体质 (Tier 4)
-        register(new Skill("hunger_constitution", Items.RABBIT_STEW, 4, "hunger_tolerance", 2, 15));
+        register(new Skill("hunger_constitution", Items.RABBIT_STEW, 4, "hunger_tolerance", 2, 20));
 
         // 饥饿爆发 (Tier 5, 隐藏技能)
-        register(new Skill("hunger_burst", Items.RABBIT_FOOT, 5, "hunger_constitution", 1, true, 20));
+        register(new Skill("hunger_burst", Items.RABBIT_FOOT, 5, "hunger_constitution", 1, true, 10));
 
 
         // ==========================================================
@@ -98,36 +114,36 @@ public class SkillRegistry {
         // ==========================================================
 
         //祝融之力
-        register(new Skill("zhu_rong", Items.MAGMA_CREAM, 4, "battle_instinct", 4, 15, 20, 25, 30)
+        register(new Skill("zhu_rong", Items.MAGMA_CREAM, 4, "battle_instinct", 4, 5, 5, 5, 5)
                 .addCriterion(new UnlockCriterion(Stats.MINED, net.minecraft.block.Blocks.NETHER_WART, 64, "criterion.ascension.harvest_nether_wart"))
                 .addUpgradeCriterion(4, new UnlockCriterion(Stats.CUSTOM, Ascension.EXPLORE_BASTION, 2, "criterion.ascension.explore_bastions")));
 
         // 火焰抵抗
-        register(new Skill("fire_resistance", Items.NETHERRACK, 2, "zhu_rong", 2, 15, 25)
+        register(new Skill("fire_resistance", Items.NETHERRACK, 2, "zhu_rong", 2, 15, 15)
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.BREW_FIRE_RES_POTION, 1, "criterion.ascension.brew_fire_res")));
 
         // 火焰感染
-        register(new Skill("fire_infection", Items.BLAZE_POWDER, 3, "fire_resistance", 1, 15)
+        register(new Skill("fire_infection", Items.BLAZE_POWDER, 3, "fire_resistance", 1, 5)
                 .setMutex("fire_res")
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.KILL_BURNING_SKELETON, 1, "criterion.ascension.kill_burning_skeleton")));
 
         // 火焰免疫
-        register(new Skill("fire_res", Items.LAVA_BUCKET, 3, "fire_resistance", 1, 45)
+        register(new Skill("fire_res", Items.LAVA_BUCKET, 3, "fire_resistance", 1, 35)
                 .setMutex("fire_infection")
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Stats.DAMAGE_TAKEN, 2000, "criterion.ascension.take_fire_damage").setDisplayDivisor(10.0)));
 
         // 热能引擎
-        register(new Skill("thermal_dynamo", Items.CAMPFIRE, 4, "fire_infection", 1, 15)
+        register(new Skill("thermal_dynamo", Items.CAMPFIRE, 4, "fire_infection", 1, 10)
                 .withVisualParent("fire_res")
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.SWIM_IN_LAVA, 20000, "criterion.ascension.swim_lava").setDisplayDivisor(100.0)));
 
         // 忧郁人格 (Melancholic Personality) - 父节点: combat (战斗入门)
-        register(new Skill("melancholic_personality", Items.GHAST_TEAR, 2, "battle_instinct", 2, 10, 15)
+        register(new Skill("melancholic_personality", Items.GHAST_TEAR, 2, "battle_instinct", 2, 5, 10)
                 .addUpgradeCriterion(2, new UnlockCriterion(Stats.CUSTOM, Ascension.KILL_CHARGED_CREEPER, 1, "criterion.ascension.kill_charged_creeper")));
 
         // 舍身一击 (Sacrificial Strike) - 父节点: rocket_boost (空中推进)
         // 注意：rocket_boost 是 Combat 分支下的
-        register(new Skill("sacrificial_strike", Items.IRON_AXE, 3, "rocket_boost", 2, 5, 10)
+        register(new Skill("sacrificial_strike", Items.IRON_AXE, 3, "rocket_boost", 2, 5, 5)
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.ASCEND_HEIGHT, 200000, "criterion.ascension.ascend_height").setDisplayDivisor(100.0))
                 .addUpgradeCriterion(2, new UnlockCriterion(Stats.CUSTOM, Ascension.KILL_ZOMBIE_AIR, 50, "criterion.ascension.kill_zombie_air")));
 
@@ -143,18 +159,18 @@ public class SkillRegistry {
                 .addUpgradeCriterion(2, new UnlockCriterion(Stats.CUSTOM, Stats.AVIATE_ONE_CM, 10000, "criterion.ascension.fly_elytra").setDisplayDivisor(100.0)));
 
         // 蓄力跳
-        register(new Skill("charged_jump", Items.FIREWORK_STAR, 3, "rocket_boost", 2, 20, 10));
+        register(new Skill("charged_jump", Items.FIREWORK_STAR, 3, "rocket_boost", 2, 7, 10));
 
         // 战斗本能
-        register(new Skill("battle_instinct", Items.GOLDEN_SWORD, 2, "combat", 3, 5, 10, 15));
+        register(new Skill("battle_instinct", Items.GOLDEN_SWORD, 2, "combat", 3, 5, 5, 5));
 
         // 狼群领袖 (Wolf Pack Leader)
-        register(new Skill("wolf_pack", Items.BONE, 3, "combat", 3, 10, 20, 30)
+        register(new Skill("wolf_pack", Items.BONE, 3, "combat", 3, 5, 5, 10)
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.TAME_DOG_COUNT, 2, "criterion.ascension.tame_2_dogs"))
                 .addUpgradeCriterion(3, new UnlockCriterion(Stats.CUSTOM, Ascension.DOG_KILL_MOB_COUNT, 1, "criterion.ascension.dog_kill_mob")));
 
         // 斩竹 (Bamboo Cutting)
-        register(new Skill("bamboo_cutting", Items.BAMBOO, 4, "battle_instinct", 4, 10, 15, 20, 25)
+        register(new Skill("bamboo_cutting", Items.BAMBOO, 4, "battle_instinct", 4, 7, 10, 10, 15)
                 .addCriterion(new UnlockCriterion(Stats.MINED, Blocks.BAMBOO, 7, "criterion.ascension.mine_7_bamboo"))
                 .addUpgradeCriterion(2, new UnlockCriterion(Stats.MINED, Blocks.BAMBOO, 27, "criterion.ascension.mine_27_bamboo"))
                 .addUpgradeCriterion(3, new UnlockCriterion(Stats.MINED, Blocks.BAMBOO, 37, "criterion.ascension.mine_37_bamboo"))
@@ -163,17 +179,17 @@ public class SkillRegistry {
         // ==========================================================
         // === Mining Branch (挖掘系) ===
         // ==========================================================
-        register(new Skill("pocket_furnace", Items.FURNACE, 2, "hephaestus_favor", 2, 15, 20)
+        register(new Skill("pocket_furnace", Items.FURNACE, 2, "hephaestus_favor", 2, 10, 10)
                 .withVisualParent("academic_miner")
         );
         // 赫菲斯托斯眷顾
-        register(new Skill("hephaestus_favor", Items.QUARTZ, 3, "miner_frenzy", 3, 15, 15, 20)
+        register(new Skill("hephaestus_favor", Items.QUARTZ, 3, "miner_frenzy", 3, 10, 5, 5)
                 .addCriterion(new UnlockCriterion(Stats.MINED, net.minecraft.block.Blocks.DEEPSLATE, 64, "criterion.ascension.mine_deepslate"))
                 .addUpgradeCriterion(3, new UnlockCriterion(Stats.CUSTOM, Ascension.WALK_ON_BEDROCK, 10000, "criterion.ascension.walk_bedrock").setDisplayDivisor(100.0)));
 
         // 淘金 (Gold Panning) - 链式重构
         // 使用先定义变量再处理循环的方式，保持代码可读性，这在链式编程中是可以接受的妥协
-        Skill goldPanning = new Skill("gold_panning", Items.GOLD_NUGGET, 2, "mining", 8, 5, 10, 10, 10, 10, 10, 10, 10)
+        Skill goldPanning = new Skill("gold_panning", Items.GOLD_NUGGET, 2, "mining", 8, 3, 3, 3, 5, 5, 5, 5, 10)
                 .addCriterion(new UnlockCriterion(Stats.CRAFTED, Items.GLASS, 64, "criterion.ascension.smelt_glass"));
         for (int i = 2; i <= 8; i++) {
             goldPanning.addUpgradeCriterion(i, new UnlockCriterion(Stats.CUSTOM, Ascension.COLLECT_STAINED_GLASS, (i - 1) * 2, "criterion.ascension.collect_stained_glass"));
@@ -181,30 +197,30 @@ public class SkillRegistry {
         register(goldPanning);
 
         // 森林主宰
-        register(new Skill("lumberjack", Items.IRON_AXE, 2, "mining", 3, 5, 10, 10)
+        register(new Skill("lumberjack", Items.IRON_AXE, 2, "mining", 3, 5, 5, 5)
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.COLLECT_LOG_VARIANTS, 4, "criterion.ascension.collect_logs"))
                 .addUpgradeCriterion(2, new UnlockCriterion(Stats.CUSTOM, Ascension.COLLECT_LOG_VARIANTS, 6, "criterion.ascension.collect_logs"))
                 .addUpgradeCriterion(3, new UnlockCriterion(Stats.CUSTOM, Ascension.COLLECT_LOG_VARIANTS, 8, "criterion.ascension.collect_logs")));
 
         // 矿工狂热
-        register(new Skill("miner_frenzy", Items.GOLDEN_PICKAXE, 2, "mining", 3, 5, 10, 10)
+        register(new Skill("miner_frenzy", Items.GOLDEN_PICKAXE, 2, "mining", 3, 5, 5, 10)
                 .addCriterion(new UnlockCriterion(Stats.USED, Items.STONE_BRICKS, 64, "criterion.ascension.use_stone_bricks"))
                 .addUpgradeCriterion(2, new UnlockCriterion(Stats.CUSTOM, Ascension.EXPLORE_MINESHAFT, 1, "criterion.ascension.find_mineshaft"))
                 .addUpgradeCriterion(3, new UnlockCriterion(Stats.MINED, net.minecraft.block.Blocks.AMETHYST_CLUSTER, 1, "criterion.ascension.mine_amethyst")));
 
         // 学术派矿工 - 链式重构
-        register(new Skill("academic_miner", Items.IRON_PICKAXE, 3, "miner_frenzy", 2, 10, 15)
+        register(new Skill("academic_miner", Items.IRON_PICKAXE, 3, "miner_frenzy", 2, 5, 10)
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Stats.MINECART_ONE_CM, 10000, "criterion.ascension.minecart_travel").setDisplayDivisor(100.0))
                 .addUpgradeCriterion(2, new UnlockCriterion(Stats.MINED, net.minecraft.block.Blocks.EMERALD_ORE, 1, "criterion.ascension.mine_emerald_ore"))
                 .addUpgradeCriterion(2, new UnlockCriterion(Stats.MINED, net.minecraft.block.Blocks.DEEPSLATE_EMERALD_ORE, 1, "criterion.ascension.mine_deepslate_emerald_ore"))); // 这里两个是 OR 关系，如果你想变成 AND，改成 addUpgradeCriteriaGroup
 
         // === 黄金屋 (Golden House) ===
-        register(new Skill("golden_house", Items.ENCHANTED_BOOK, 2, "miscellaneous", 3, 10, 20, 25)
+        register(new Skill("golden_house", Items.ENCHANTED_BOOK, 2, "miscellaneous", 3, 5, 10, 15)
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.ENCHANT_WITH_LEVEL_30, 1, "criterion.ascension.enchant_lv30"))
                 .addUpgradeCriterion(3, new UnlockCriterion(Stats.CUSTOM, Ascension.TRADE_DIFFERENT_ENCHANTED_BOOKS, 4, "criterion.ascension.trade_4_books")));
 
         // === 念力 (Telekinesis) ===
-        register(new Skill("telekinesis", Items.ENDER_EYE, 2, "mining", 2, 10, 15)
+        register(new Skill("telekinesis", Items.ENDER_EYE, 2, "mining", 2, 10, 10)
                 .addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.PLACE_BLOCK_COUNT, 2000, "criterion.ascension.place_block_count"))
                 .addUpgradeCriterion(2, new UnlockCriterion(Stats.CUSTOM, Ascension.USE_ENDER_PEARL_COUNT, 64, "criterion.ascension.use_64_pearls")));
 
@@ -222,7 +238,7 @@ public class SkillRegistry {
                 new int[]{1, 2, 2}, // maxCharges
                 new int[]{1200, 1200, 900}, // 冷却
                 new int[]{100, 100, 100},
-                10, 10, 10 // costs
+                5, 5, 10 // costs
         );
         thunderClap.addIngredient(Items.COPPER_INGOT, 1, false, 0)
                 .addIngredient(Items.DIAMOND, 1, true, 3);
@@ -240,7 +256,7 @@ public class SkillRegistry {
                 new int[]{1, 2, 2, 3}, // Charges: 1, 2, 2, 3
                 new int[]{400, 400, 400, 400}, // Cooldown: 20s
                 new int[]{100, 100, 100, 100},
-                10, 10, 10, 10 // Costs
+                7, 7, 7, 7 // Costs
         );
         blink.addIngredient(Items.COPPER_INGOT, 1, false, 0)
                 .addIngredient(Items.ENDER_PEARL, 1, true, 1); // bonusEffect=1 (flag for double range)
@@ -257,7 +273,7 @@ public class SkillRegistry {
                 new int[]{2, 2}, // Charges: 都是2次
                 new int[]{1200, 900}, // Cooldown: Lv1=60s(1200t), Lv2=45s(900t)
                 new int[]{1200, 900},
-                10, 10 // Costs
+                7, 7 // Costs
         );
         invincibleBody.addIngredient(Items.COPPER_INGOT, 1, false, 0)
                 .addIngredient(Items.GOLD_INGOT, 1, true, 60);
@@ -275,7 +291,7 @@ public class SkillRegistry {
                 new int[]{1, 1, 1}, // 最大充能 1 次
                 new int[]{400, 400, 400}, // 基础冷却 20s
                 new int[]{1200, 1200, 1200},
-                10, 10, 10 // 消耗
+                5, 7, 10 // 消耗
         );
         dragonFlame.addIngredient(Items.COPPER_INGOT, 1, false, 0);
         dragonFlame.addIngredient(Items.GHAST_TEAR, 1, true, 1);
@@ -294,7 +310,7 @@ public class SkillRegistry {
                 new int[]{1, 1}, // Charges
                 new int[]{900, 900}, // Cooldown: 45s
                 new int[]{900, 900},
-                20, 30 // Costs
+                10, 10 // Costs
         );
         radiantAvatar.addIngredient(Items.BLAZE_ROD, 3, false, 0);
         radiantAvatar.addCriterion(new UnlockCriterion("undead_type_count", 8, "criterion.ascension.kill_undead_types"));
@@ -312,7 +328,7 @@ public class SkillRegistry {
                 1, // Max Charges 1
                 300 * 20, // Base Cooldown 300s (6000 ticks) - 这里填默认值，实际会根据材料动态调整
                 600,
-                10 // Cost
+                5 // Cost
         );
         starShift.addIngredient(Items.COPPER_INGOT, 1, false, 0);
         starShift.addIngredient(Items.DIAMOND, 1, true, 0); // bonusEffect 在这里主要用于标记，具体数值在 execute 里硬编码处理
@@ -329,7 +345,7 @@ public class SkillRegistry {
                 new int[]{1, 1, 2},
                 new int[]{1200, 1200, 1200},
                 new int[]{400, 400, 400},
-                10, 15, 20
+                7, 10, 10
         );
         wraithWrath.addIngredient(Items.COPPER_INGOT, 1, false, 0);
         wraithWrath.addIngredient(Items.TIPPED_ARROW, 1, true, 1);
@@ -364,7 +380,7 @@ public class SkillRegistry {
                 new int[]{2, 3, 4, 5}, // Charges
                 new int[]{900, 900, 900, 900}, // 45s
                 new int[]{600, 600, 600, 600}, // 30s
-                10, 15, 20, 25 // Costs
+                3, 5, 5, 10 // Costs
         );
         cocktail.addIngredient(Items.COPPER_INGOT, 1, false, 0);
         cocktail.addIngredient(Items.SUGAR, 1, false, 0);
@@ -385,7 +401,7 @@ public class SkillRegistry {
                 new int[]{1, 2}, // Charges: Lv1=1, Lv2=2
                 new int[]{240, 240}, // Base Cooldown: 12s (实际会根据硬度动态调整)
                 new int[]{240, 240}, // Secondary Cooldown: 12s
-                15, 25 // Costs
+                7, 10 // Costs
         );
         voidTouch.addIngredient(Items.COPPER_INGOT, 1, false, 0);
         voidTouch.addIngredient(Items.ENDER_EYE, 1, true, 1);
@@ -403,7 +419,7 @@ public class SkillRegistry {
                 new int[]{2, 3}, // Charges
                 new int[]{1200, 1200}, // Cooldown: 60s
                 new int[]{1200, 1200}, // Secondary Cooldown: 60s
-                10, 20 // Costs
+                5, 7 // Costs
         );
         finification.addIngredient(Items.COPPER_INGOT, 1, false, 0);
         finification.addIngredient(Items.PUFFERFISH, 1, true, 1);
@@ -422,7 +438,7 @@ public class SkillRegistry {
                 new int[]{2}, // Charges 2
                 new int[]{1200}, // 60s
                 new int[]{1800}, // 90s
-                30 // Cost
+                15 // Cost
         );
         swordOfJudgment.addIngredient(Items.DIAMOND, 2, false, 0); // 消耗2枚钻石
         swordOfJudgment.addCriterion(new UnlockCriterion(Stats.CUSTOM, Ascension.SMITH_NETHERITE_SWORD, 1, "criterion.ascension.smith_netherite_sword"));
@@ -439,7 +455,7 @@ public class SkillRegistry {
                 new int[]{1, 1, 2}, // Charges: Lv1=1, Lv2=1, Lv3=2
                 new int[]{600, 600, 600}, // 30s
                 new int[]{600, 600, 600}, // 30s
-                10, 15, 20 // Costs
+                5, 5, 10 // Costs
         );
         hunterVision.addIngredient(Items.COPPER_INGOT, 1, false, 0);
         hunterVision.addIngredient(Items.SPECTRAL_ARROW, 1, true, 1); // priority=true 标记为强化材料
@@ -448,6 +464,27 @@ public class SkillRegistry {
         hunterVision.addUpgradeCriterion(3, new UnlockCriterion(Stats.CUSTOM, Ascension.GLOWING_AT_NIGHT, 1, "criterion.ascension.glowing_at_night"));
         hunterVision.setBehavior(SkillActionHandler::executeHunterVision);
         register(hunterVision);
+
+        // 巨浪 (Tidal Wave)
+        ActiveSkill tidalWave = new ActiveSkill(
+                "tidal_wave",
+                Items.PRISMARINE_SHARD, // 图标使用海晶碎片
+                4, // Tier 4 (基于缸中之脑 Tier 3)
+                "brain_in_a_jar", // 父节点
+                2, // Max Level
+                new int[]{3, 4}, // 最大充能次数：3次 / 4次
+                new int[]{1800, 900}, // 主要冷却：90s (1800t) / 45s (900t)
+                new int[]{300, 150}, // 次要冷却：15s (300t) / 7.5s (150t)
+                15, 20 // 消耗技能点
+        );
+        tidalWave.addIngredient(Items.COPPER_INGOT, 1, false, 0);
+        tidalWave.addIngredient(Items.PRISMARINE_CRYSTALS, 1, true, 1);
+        // 1级解锁条件：获得海绵
+        tidalWave.addCriterion(new UnlockCriterion(net.minecraft.stat.Stats.PICKED_UP, Items.SPONGE, 1, "criterion.ascension.obtain_sponge"));
+        // 2级升级条件：获得潮涌能量状态 (使用NBT记录)
+        tidalWave.addUpgradeCriterion(2, new UnlockCriterion("obtained_conduit_power", 1, "criterion.ascension.conduit_power"));
+        tidalWave.setBehavior(SkillActionHandler::executeTidalWave);
+        register(tidalWave);
 
         // 计算布局
         calculateLayout();

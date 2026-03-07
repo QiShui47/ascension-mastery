@@ -22,12 +22,18 @@ public class ActiveSkillHud implements HudRenderCallback {
         NbtList activeSlots = nbt.getList("active_skill_slots", NbtElement.COMPOUND_TYPE);
         int selectedSlot = nbt.getInt("selected_active_slot");
 
+        // 动态获取最大槽位数
+        int maxSlots = 2;
+        if (nbt.contains("skill_levels")) {
+            maxSlots += nbt.getCompound("skill_levels").getInt("practice_makes_perfect");
+        }
+
         int screenWidth = context.getScaledWindowWidth();
         int screenHeight = context.getScaledWindowHeight();
         int startX = (screenWidth / 2) + 100;
         int startY = screenHeight - 36;
 
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < maxSlots; i++) {
             int x = startX + (i * SLOT_SPACING);
             int y = startY;
             int centerX = x + 13;

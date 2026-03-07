@@ -329,7 +329,8 @@ public class SkillTreeScreen extends Screen {
     }
 
     private void renderActiveSkillSlots(DrawContext context, int mouseX, int mouseY) {
-        int startX = this.width - 20 - (5 * SLOT_SPACING);
+        int maxSlots = 2 + getLevel("practice_makes_perfect");
+        int startX = this.width - 20 - (maxSlots * SLOT_SPACING);
         int startY = this.height - 40;
 
         // 标题
@@ -367,7 +368,7 @@ public class SkillTreeScreen extends Screen {
 
         long currentTime = this.client.world.getTime();
 
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < maxSlots; i++) {
             int x = startX + (i * SLOT_SPACING);
             int y = startY;
 
@@ -467,9 +468,10 @@ public class SkillTreeScreen extends Screen {
             this.isPotentialClick = true;
 
             // A. 检测是否点击了【技能槽】(用于拖出/卸载)
-            int startX = this.width - 20 - (5 * SLOT_SPACING);
+            int maxSlots = 2 + getLevel("practice_makes_perfect");
+            int startX = this.width - 20 - (maxSlots * SLOT_SPACING);
             int startY = this.height - 40;
-            for (int i = 0; i < 5; i++) {
+            for (int i = 0; i < maxSlots; i++) {
                 int x = startX + (i * SLOT_SPACING);
                 if (mouseX >= x && mouseX <= x + 26 && mouseY >= startY && mouseY <= startY + 26) {
                     // 获取该槽位的技能
@@ -559,11 +561,12 @@ public class SkillTreeScreen extends Screen {
             boolean isDragAction = dist > 3;
 
             // 检测是否放置在槽位上
-            int startX = this.width - 20 - (5 * SLOT_SPACING);
+            int maxSlots = 2 + getLevel("practice_makes_perfect");
+            int startX = this.width - 20 - (maxSlots * SLOT_SPACING);
             int startY = this.height - 40;
             int dropSlotIndex = -1;
 
-            for (int i = 0; i < 5; i++) {
+            for (int i = 0; i < maxSlots; i++) {
                 int x = startX + (i * SLOT_SPACING);
                 if (mouseX >= x && mouseX <= x + 26 && mouseY >= startY && mouseY <= startY + 26) {
                     dropSlotIndex = i;

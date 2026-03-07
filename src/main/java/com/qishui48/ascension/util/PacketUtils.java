@@ -99,6 +99,32 @@ public class PacketUtils {
         return getSkillLevel(player, skillId) > 0;
     }
 
+    // 统计已解锁主动技能数量
+    public static void recalculateActiveSkillCount(ServerPlayerEntity player) {
+        IEntityDataSaver dataSaver = (IEntityDataSaver) player;
+        NbtCompound nbt = dataSaver.getPersistentData();
+
+        if (!nbt.contains("skill_levels")) {
+            nbt.putInt("unlocked_active_skills_count", 0);
+            return;
+        }
+
+        NbtCompound levelList = nbt.getCompound("skill_levels");
+        int count = 0;
+
+        // 遍历所有已解锁的技能，筛选出主动技能
+        for (String skillId : levelList.getKeys()) {
+            if (levelList.getInt(skillId) > 0) {
+                Skill skill = SkillRegistry.get(skillId);
+                if (skill instanceof ActiveSkill) {
+                    count++;
+                }
+            }
+        }
+
+        nbt.putInt("unlocked_active_skills_count", count);
+    }
+
     public static void unlockSkill(ServerPlayerEntity player, String skillId) {
         IEntityDataSaver dataSaver = (IEntityDataSaver) player;
         NbtCompound nbt = dataSaver.getPersistentData();
@@ -111,6 +137,7 @@ public class PacketUtils {
         int currentLevel = levelList.getInt(skillId);
         levelList.putInt(skillId, currentLevel + 1);
         nbt.put("skill_levels", levelList);
+        recalculateActiveSkillCount(player);
         syncSkillData(player);
     }
 
@@ -130,6 +157,7 @@ public class PacketUtils {
             levelList.putInt(skillId, level);
         }
         nbt.put("skill_levels", levelList);
+        recalculateActiveSkillCount(player);
         syncSkillData(player);
     }
 
@@ -378,6 +406,8 @@ public class PacketUtils {
         // 移除所有手动停用记录
         nbt.remove("disabled_skills");
 
+        recalculateActiveSkillCount(player);
+
         // === 6. 更新记录 ===
         nbt.putInt("reset_count", resetCount + 1);
         nbt.putLong("last_reset_time", currentTime);
@@ -408,6 +438,9 @@ public class PacketUtils {
         NbtCompound nbt = dataSaver.getPersistentData();
         if (!nbt.contains("active_skill_slots", 9)) return;
         NbtList activeSlots = nbt.getList("active_skill_slots", 10);
+
+        // 创造模式不再进入冷却
+        if (player.isCreative()) return;
 
         int level = getSkillLevel(player, skill.id);
         int cooldownTicks;

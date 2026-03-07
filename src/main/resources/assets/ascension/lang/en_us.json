@@ -178,6 +178,29 @@
   "skill.ascension.miscellaneous": "Arcane Arts",
   "skill.ascension.miscellaneous.desc": "Mysterious techniques beyond conventional survival.",
 
+  "skill.ascension.instinct": "Instinct",
+  "skill.ascension.instinct.desc": "Awaken the primal power hidden within your bloodline.",
+
+  "skill.ascension.practice_makes_perfect": "Practice Makes Perfect",
+  "skill.ascension.practice_makes_perfect.desc": "§7You are becoming more proficient with your abilities.",
+  "skill.ascension.practice_makes_perfect.desc.1": "§eEffect: §fGain §e1 extra Active Skill slot§f.",
+  "skill.ascension.practice_makes_perfect.upgrade.2": "§a+ Gain 1 extra Active Skill slot",
+  "skill.ascension.practice_makes_perfect.desc.2": "§eEffect: §fGain §e2 extra Active Skill slots§f.",
+  "skill.ascension.practice_makes_perfect.upgrade.3": "§a+ Gain 1 extra Active Skill slot",
+  "skill.ascension.practice_makes_perfect.desc.3": "§eEffect: §fGain §e3 extra Active Skill slots§f.",
+  "skill.ascension.practice_makes_perfect.upgrade.4": "§a+ Gain 1 extra Active Skill slot",
+  "skill.ascension.practice_makes_perfect.desc.4": "§eEffect: §fGain §e4 extra Active Skill slots§f.",
+
+  "skill.ascension.alchemist": "Alchemist",
+  "skill.ascension.alchemist.desc": "A profound understanding of material composition allows you to prepare more casting materials.",
+  "skill.ascension.alchemist.desc.1": "§eEffect: §fGain §e1 extra Material slot§f.",
+  "skill.ascension.alchemist.upgrade.2": "§a+ Gain 1 extra Material slot",
+  "skill.ascension.alchemist.desc.2": "§eEffect: §fGain §e2 extra Material slots§f.",
+  "skill.ascension.alchemist.upgrade.3": "§a+ Gain 1 extra Material slot",
+  "skill.ascension.alchemist.desc.3": "§eEffect: §fGain §e3 extra Material slots§f.",
+  "skill.ascension.alchemist.upgrade.4": "§a+ Gain 1 extra Material slot",
+  "skill.ascension.alchemist.desc.4": "§eEffect: §fGain §e4 extra Material slots§f.",
+
   "skill.ascension.golden_house": "Golden House",
   "skill.ascension.golden_house.desc": "§7书中自有黄金屋。\n(Book of Gold)",
   "skill.ascension.golden_house.desc.1": "§eEffect: §fHold Right-Click to read Enchanted Books, consuming §fHunger §fto gain §eExperience§f.\n§7(XP gain scales with enchantment levels)",
@@ -512,6 +535,12 @@
   "skill.ascension.hunter_vision.upgrade.3": "§a+ Highlights players\n§a+ Max charge increased by 1",
   "skill.ascension.hunter_vision.desc.3": "§eMaterial: §fCopper Ingot / Spectral Arrow §7(Duration extended)\n§bEffect: §fHighlight all entities through walls within 25 blocks for 12s.\n§3Secondary: §fBlind glowing mobs.\n§7Prevents blinded mobs from attacking or fleeing.",
 
+  "skill.ascension.tidal_wave": "Tidal Wave",
+  "skill.ascension.tidal_wave.desc": "Glide across the water's surface.",
+  "skill.ascension.tidal_wave.desc.1": "§eMaterial: §fCopper Ingot / Prismarine Crystals\n§bEffect: §fFloat on water for 60s.\n§3Secondary: §fLeap high and conjure a water pillar beneath you.\n§7The water pillar dissipates after a short time.",
+  "skill.ascension.tidal_wave.upgrade.2": "§a+ Keep hostile mobs at bay while floating\n§a+ Max charge increased by 1\n§a+ Secondary cooldown halved",
+  "skill.ascension.tidal_wave.desc.2": "§eMaterial: §fCopper Ingot / Prismarine Crystals\n§bEffect: §fFloat on water for 60s.\n§7Knocks back hostile mobs within 5 meters while floating.\n§3Secondary: §fLeap high and conjure a water pillar beneath you.\n§7The water pillar dissipates after a short time.",
+
   "criterion.ascension.eat_apple": "Ate %s apples",
   "criterion.ascension.kill_cow": "Killed %s cows",
   "criterion.ascension.jump": "Jumped %s times",
@@ -581,5 +610,12 @@
   "criterion.ascension.fish_respiration_book": "Caught an Enchanted Book with Respiration",
   "criterion.ascension.smith_netherite_sword": "Smithed a Netherite Sword using a Smithing Table",
   "criterion.ascension.obtain_spectral_arrow": "Obtained a Spectral Arrow",
-  "criterion.ascension.glowing_at_night": "Obtained the Glowing effect at night"
+  "criterion.ascension.glowing_at_night": "Obtained the Glowing effect at night",
+  "criterion.ascension.unlock_4_active_skills": "Unlocked 4 Active Skills",
+  "criterion.ascension.unlock_5_active_skills": "Unlocked 5 Active Skills",
+  "criterion.ascension.unlock_6_active_skills": "Unlocked 6 Active Skills",
+  "criterion.ascension.unlock_7_active_skills": "Unlocked 7 Active Skills",
+  "criterion.ascension.collect_items": "Collected %s different items",
+  "criterion.ascension.obtain_sponge": "Obtained a Sponge",
+  "criterion.ascension.conduit_power": "Obtained the Conduit Power effect"
 }

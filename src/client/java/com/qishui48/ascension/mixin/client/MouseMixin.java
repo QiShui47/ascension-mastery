@@ -26,14 +26,19 @@ public class MouseMixin {
         if (AscensionClient.altKey.isPressed()) {
             // 获取当前已解锁的槽位数
             IEntityDataSaver data = (IEntityDataSaver) client.player;
-            int masteryLevel = 3;
-            //if (data.getPersistentData().contains("skill_levels")) {
-            //    masteryLevel = data.getPersistentData().getCompound("skill_levels").getInt("mastery");
-            //}
-            int maxSlots = 2 + masteryLevel;
+            int practiceLevel = 0;
+            if (data.getPersistentData().contains("skill_levels")) {
+                practiceLevel = data.getPersistentData().getCompound("skill_levels").getInt("practice_makes_perfect");
+            }
+            int maxSlots = 2 + practiceLevel;
 
             // 获取当前选中的槽位
             int currentSlot = data.getPersistentData().getInt("selected_active_slot");
+
+            // 容错处理：如果当前选中的槽位越界（例如洗点后槽位变少），重置为0
+            if (currentSlot >= maxSlots) {
+                currentSlot = maxSlots - 1;
+            }
 
             // 计算新槽位
             if (vertical > 0) { // 向上滚

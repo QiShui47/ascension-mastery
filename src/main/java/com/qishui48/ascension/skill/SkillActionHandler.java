@@ -25,6 +25,7 @@ import net.minecraft.nbt.NbtList;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionUtil;
 import net.minecraft.potion.Potions;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
@@ -46,6 +47,14 @@ import net.minecraft.world.World;
 import net.minecraft.world.event.GameEvent;
 
 import java.util.*;
+import java.util.Deque;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.server.world.ServerWorld;
 
 public class SkillActionHandler {
 
@@ -1573,7 +1582,7 @@ public class SkillActionHandler {
             int[] damages = { 4, 5, 4, 6, 7, 8 }; // 各材质基础伤害
 
             for (LivingEntity enemy : enemies) {
-                if (enemy.timeUntilRegen <= 10 && enemy.distanceTo(player) <= 3.5) {
+                if (enemy.timeUntilRegen <= 10 && enemy.distanceTo(player) <= 5.5) {
                     // 随机抽取一把剑的伤害
                     int randomTier = world.random.nextInt(bestTier + 1);
                     float dmg = damages[randomTier] / 1.5f;
@@ -1658,6 +1667,178 @@ public class SkillActionHandler {
 
         SkillSoundHandler.playSkillSound(player, SkillSoundHandler.SoundType.ACTIVATE);
         player.sendMessage(Text.translatable("message.ascension.hunter_vision_active").formatted(Formatting.GREEN), true);
+        return true;
+    }
+
+    // === 水柱追踪器 (专用于次要效果的独立倒计时栈) ===
+    public static class TidalWaveWaterTracker {
+        private final Deque<List<BlockPos>> layers = new ConcurrentLinkedDeque<>();
+        private final MinecraftServer server;
+        private final RegistryKey<World> worldKey;
+
+        public TidalWaveWaterTracker(MinecraftServer server, World world) {
+            this.server = server;
+            this.worldKey = world.getRegistryKey();
+        }
+
+        public void addLayer(List<BlockPos> layer) {
+            if (!layer.isEmpty()) {
+                layers.push(layer); // 压入栈顶
+            }
+        }
+
+        // 独立的倒计时消散任务
+        public void scheduleRemoval(long delayMs) {
+            new Timer().schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    Timer removalTimer = new Timer();
+                    int i = 0;
+                    while (!layers.isEmpty()) {
+                        List<BlockPos> layer = layers.pollFirst(); // 从栈顶一层层弹出
+                        removalTimer.schedule(new TimerTask() {
+                            @Override
+                            public void run() {
+                                server.execute(() -> {
+                                    ServerWorld world = server.getWorld(worldKey);
+                                    if (world == null) return;
+                                    for (BlockPos pos : layer) {
+                                        // 确保只有还是水的情况下才替换为空气
+                                        if (world.getBlockState(pos).isOf(net.minecraft.block.Blocks.WATER)) {
+                                            world.setBlockState(pos, net.minecraft.block.Blocks.AIR.getDefaultState());
+                                        }
+                                    }
+                                });
+                            }
+                        }, i * 50L); // 每层消散间隔 1 Tick (50ms)，产生退潮感
+                        i++;
+                    }
+                }
+            }, delayMs);
+        }
+    }
+
+    // 巨浪
+    public static boolean executeTidalWave(ServerPlayerEntity player, ActiveSkill skill, boolean isSecondary) {
+        int level = PacketUtils.getSkillLevel(player, skill.id);
+        if (level <= 0) return false;
+
+        World world = player.getWorld();
+
+        // 检查并消耗材料
+        ActiveSkill.CastIngredient usedIngredient = findMaterial(player, skill);
+        if (usedIngredient == null && !player.isCreative()) {
+            player.sendMessage(Text.translatable("message.ascension.no_material").formatted(Formatting.RED), true);
+            return false;
+        }
+
+        if (isSecondary) {
+            // 检查环境是否允许释放（不允许在地狱释放）
+            if (world.getDimension().ultrawarm()) {
+                //player.sendMessage(Text.translatable("message.ascension.tidal_wave_ultrawarm").formatted(Formatting.RED), true);
+                return false;
+            }
+
+            // 以玩家为中心 5x5x5 范围内寻找水源
+            boolean hasWater = false;
+            BlockPos playerPos = player.getBlockPos();
+            for (BlockPos pos : BlockPos.iterate(playerPos.add(-5, -5, -5), playerPos.add(5, 5, 5))) {
+                if (world.getBlockState(pos).isOf(net.minecraft.block.Blocks.WATER)) {
+                    hasWater = true;
+                    break;
+                }
+            }
+
+            // === 次要效果：高高跃起，升空过程中不断造浪 ===
+            consumeMaterial(player, usedIngredient);
+
+            if (!player.isCreative()) {
+                PacketUtils.consumeSkillCharge(player, skill, true);
+            }
+
+            // 1. 高高跃起
+            player.setVelocity(player.getVelocity().x, 10.5, player.getVelocity().z);
+            player.velocityModified = true;
+
+            // 豁免摔落伤害
+            setFallDistanceCushion(player, 20.0f);
+
+            world.playSound(null, player.getX(), player.getY(), player.getZ(),
+                    SoundEvents.ENTITY_PLAYER_ATTACK_SWEEP, SoundCategory.PLAYERS, 1.0f, 0.5f);
+
+            TidalWaveWaterTracker tracker = new TidalWaveWaterTracker(player.getServer(), world);
+            // 2. 踏浪升空：在接下来的 16 刻 (800ms) 内，每 Tick 执行一次铺设
+            Timer timer = new Timer();
+            for (int i = 1; i <= 16; i++) {
+                final int tick = i;
+                timer.schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        player.getServer().execute(() -> {
+                            if (player.isRemoved()) return;
+
+                            // 获取此时的脚底坐标
+                            BlockPos centerPos = player.getBlockPos().down();
+                            List<BlockPos> currentLayer = new ArrayList<>(); // 记录当前生成的这一层水源
+
+                            // 铺设 5x5 水源平面
+                            for (int dx = -2; dx <= 2; dx++) {
+                                for (int dz = -2; dz <= 2; dz++) {
+                                    BlockPos targetPos = centerPos.add(dx, 0, dz);
+                                    BlockState currentState = world.getBlockState(targetPos);
+
+                                    if (currentState.isAir() || currentState.isReplaceable()) {
+                                        world.setBlockState(targetPos, net.minecraft.block.Blocks.WATER.getDefaultState());
+                                        currentLayer.add(targetPos); // 加入该层记录
+                                    }
+                                }
+                            }
+
+                            tracker.addLayer(currentLayer);
+
+                            // 如果是最后一刻（顶点），播放大水花和音效
+                            if (tick == 16) {
+                                world.playSound(null, player.getX(), player.getY(), player.getZ(),
+                                        SoundEvents.ENTITY_GENERIC_SPLASH, SoundCategory.PLAYERS, 1.5f, 0.8f);
+                                ((ServerWorld) world).spawnParticles(ParticleTypes.SPLASH,
+                                        player.getX(), player.getY(), player.getZ(), 50, 2.0, 0.5, 2.0, 0.1);
+                            } else {
+                                // 升空途中的小水花特效
+                                ((ServerWorld) world).spawnParticles(ParticleTypes.CLOUD,
+                                        player.getX(), player.getY(), player.getZ(), 3, 0.5, 0.2, 0.5, 0.05);
+                            }
+                        });
+                    }
+                }, i * 50L); // 50ms = 1 Tick
+            }
+
+            tracker.scheduleRemoval(3000);
+            return true;
+        }
+
+        // === 主要效果：开启漂浮状态 ===
+        consumeMaterial(player, usedIngredient);
+
+        if (!player.isCreative()) {
+            PacketUtils.consumeSkillCharge(player, skill, false);
+        }
+
+        long duration = 1200;
+        long now = world.getTime();
+        long endTime = now + duration;
+
+        IEntityDataSaver data = (IEntityDataSaver) player;
+        NbtCompound nbt = data.getPersistentData();
+
+        nbt.putLong("tidal_wave_end", endTime);
+        nbt.putInt("tidal_wave_level", level);
+
+        updateSkillSlotBus(player, skill.id, (int)duration, endTime);
+        PacketUtils.syncSkillData(player);
+
+        SkillSoundHandler.playSkillSound(player, SkillSoundHandler.SoundType.ACTIVATE);
+        //player.sendMessage(Text.translatable("message.ascension.tidal_wave_active").formatted(Formatting.AQUA), true);
+
         return true;
     }
 

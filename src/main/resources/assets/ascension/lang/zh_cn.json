@@ -176,7 +176,30 @@
   "skill.ascension.mining.desc": "这个类别的技能可以提高破坏和创造的效率",
 
   "skill.ascension.miscellaneous": "奇术",
-  "skill.ascension.miscellaneous.desc": "一些神秘技巧",
+  "skill.ascension.miscellaneous.desc": "这个类别的技能是一些奇巧淫技",
+
+  "skill.ascension.instinct": "本能",
+  "skill.ascension.instinct.desc": "这个类别的技能可以唤醒潜藏于血脉中的原始力量",
+
+  "skill.ascension.practice_makes_perfect": "熟能生巧",
+  "skill.ascension.practice_makes_perfect.desc": "§7你越发熟练地掌握各种能力。",
+  "skill.ascension.practice_makes_perfect.desc.1": "§e效果：§f获得 §e1个 额外的主动技能槽§f。",
+  "skill.ascension.practice_makes_perfect.upgrade.2": "§a+ 再获得 1个 额外的主动技能槽",
+  "skill.ascension.practice_makes_perfect.desc.2": "§e效果：§f获得 §e2个 额外的主动技能槽§f。",
+  "skill.ascension.practice_makes_perfect.upgrade.3": "§a+ 再获得 1个 额外的主动技能槽",
+  "skill.ascension.practice_makes_perfect.desc.3": "§e效果：§f获得 §e3个 额外的主动技能槽§f。",
+  "skill.ascension.practice_makes_perfect.upgrade.4": "§a+ 再获得 1个 额外的主动技能槽",
+  "skill.ascension.practice_makes_perfect.desc.4": "§e效果：§f获得 §e4个 额外的主动技能槽§f。",
+
+  "skill.ascension.alchemist": "炼金术师",
+  "skill.ascension.alchemist.desc": "对物质构成的深刻理解使你能够准备更多的施法材料。",
+  "skill.ascension.alchemist.desc.1": "§e效果：§f获得 §e1个 额外的施法材料槽§f。",
+  "skill.ascension.alchemist.upgrade.2": "§a+ 再获得 1个 额外的施法材料槽",
+  "skill.ascension.alchemist.desc.2": "§e效果：§f获得 §e2个 额外的施法材料槽§f。",
+  "skill.ascension.alchemist.upgrade.3": "§a+ 再获得 1个 额外的施法材料槽",
+  "skill.ascension.alchemist.desc.3": "§e效果：§f获得 §e3个 额外的施法材料槽§f。",
+  "skill.ascension.alchemist.upgrade.4": "§a+ 再获得 1个 额外的施法材料槽",
+  "skill.ascension.alchemist.desc.4": "§e效果：§f获得 §e4个 额外的施法材料槽§f。",
 
   "skill.ascension.golden_house": "黄金屋",
   "skill.ascension.golden_house.desc": "§7书中自有黄金屋。",
@@ -512,6 +535,12 @@
   "skill.ascension.hunter_vision.upgrade.3": "§a+ 额外透视玩家\n§a+ 增加1次充能上限",
   "skill.ascension.hunter_vision.desc.3": "§e施法材料：§f铜锭 / 光灵箭 §7(延长猎手视觉时间)\n§b效果：§f12秒内透视25格内的生物。\n§3次要效果：§f致盲正在发光的生物。\n§7阻止失明的生物的攻击行为和逃跑行为。",
 
+  "skill.ascension.tidal_wave": "巨浪",
+  "skill.ascension.tidal_wave.desc": "轻功水上漂",
+  "skill.ascension.tidal_wave.desc.1": "§e施法材料：§f铜锭 / 海晶沙砾\n§b效果：§f60秒内可以在水上漂浮。\n§3次要效果：§f高高跃起并在脚下生成水柱。\n§7生成的水柱片刻后会自行消散。",
+  "skill.ascension.tidal_wave.upgrade.2": "§a+ 漂浮期间阻止敌对生物接近\n§a+ 增加1次充能上限\n§a+ 次要效果冷却时间减半",
+  "skill.ascension.tidal_wave.desc.2": "§e施法材料：§f铜锭 / 海晶沙砾\n§b效果：§f60秒内可以在水上漂浮。\n§7漂浮时击退周围5米内的敌对生物。\n§3次要效果：§f高高跃起并在脚下生成水柱。\n§7生成的水柱片刻后会自行消散。",
+
   "criterion.ascension.eat_apple": "吃过 %s 个苹果",
   "criterion.ascension.kill_cow": "击杀 %s 只牛",
   "criterion.ascension.jump": "跳跃 %s 次",
@@ -581,5 +610,12 @@
   "criterion.ascension.fish_respiration_book": "钓到附有水下呼吸的书",
   "criterion.ascension.smith_netherite_sword": "使用锻造台锻造一把下界合金剑",
   "criterion.ascension.obtain_spectral_arrow": "获得一支光灵箭",
-  "criterion.ascension.glowing_at_night": "在夜间获得发光效果"
+  "criterion.ascension.glowing_at_night": "在夜间获得发光效果",
+  "criterion.ascension.unlock_4_active_skills": "累计解锁 4 个主动技能",
+  "criterion.ascension.unlock_5_active_skills": "累计解锁 5 个主动技能",
+  "criterion.ascension.unlock_6_active_skills": "累计解锁 6 个主动技能",
+  "criterion.ascension.unlock_7_active_skills": "累计解锁 7 个主动技能",
+  "criterion.ascension.collect_items": "收集 %s 种不同的物品",
+  "criterion.ascension.obtain_sponge": "获得海绵",
+  "criterion.ascension.conduit_power": "获得潮涌能量状态"
 }

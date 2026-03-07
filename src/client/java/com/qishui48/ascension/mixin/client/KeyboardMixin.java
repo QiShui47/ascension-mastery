@@ -34,17 +34,22 @@ public class KeyboardMixin {
                 else if (key == GLFW.GLFW_KEY_5) slotIndex = 4;
 
                 if (slotIndex != -1) {
-                    // 发送切换包
-                    PacketByteBuf buf = PacketByteBufs.create();
-                    buf.writeInt(slotIndex);
-                    ClientPlayNetworking.send(ModMessages.SWITCH_SLOT_ID, buf);
+                    com.qishui48.ascension.util.IEntityDataSaver data = (com.qishui48.ascension.util.IEntityDataSaver) MinecraftClient.getInstance().player;
+                    int practiceLevel = 0;
+                    if (data.getPersistentData().contains("skill_levels")) {
+                        practiceLevel = data.getPersistentData().getCompound("skill_levels").getInt("practice_makes_perfect");
+                    }
+                    int maxSlots = 2 + practiceLevel;
 
-                    // 播放音效
-                    // MinecraftClient.getInstance().getSoundManager().play(...)
+                    // 只有当按下的数字键对应的槽位 < 最大槽位时，才允许切换
+                    if (slotIndex < maxSlots) {
+                        // 发送切换包
+                        PacketByteBuf buf = PacketByteBufs.create();
+                        buf.writeInt(slotIndex);
+                        ClientPlayNetworking.send(ModMessages.SWITCH_SLOT_ID, buf);
 
-                    // === [关键] 阻止原版处理该按键 ===
-                    // 这会防止物品栏切换
-                    ci.cancel();
+                        ci.cancel(); // 阻止原版处理该按键
+                    }
                 }
             }
         }

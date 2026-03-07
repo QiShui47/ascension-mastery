@@ -4,10 +4,12 @@ import com.qishui48.ascension.network.ModMessages;
 import com.qishui48.ascension.util.IEntityDataSaver;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ingame.AbstractInventoryScreen;
 import net.minecraft.client.gui.screen.ingame.InventoryScreen;
 import net.minecraft.client.gui.screen.recipebook.RecipeBookProvider;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtElement;
@@ -17,6 +19,7 @@ import net.minecraft.screen.PlayerScreenHandler;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -32,6 +35,25 @@ public abstract class InventoryScreenMixin extends AbstractInventoryScreen<Playe
         super(screenHandler, playerInventory, text);
     }
 
+    // === 新增：将其提取为一个安全的内部辅助方法 ===
+    @Unique
+    private int getMaxMaterialSlots(PlayerEntity player) {
+        if (player == null) return 2; // 安全回退
+        IEntityDataSaver data = (IEntityDataSaver) player;
+        int alchemistLevel = 0;
+        if (data.getPersistentData().contains("skill_levels")) {
+            alchemistLevel = data.getPersistentData().getCompound("skill_levels").getInt("alchemist");
+        }
+        return 2 + alchemistLevel;
+    }
+
+    @Unique
+    private NbtList getMaterialsList(PlayerEntity player) {
+        if (player == null) return new NbtList();
+        IEntityDataSaver data = (IEntityDataSaver) player;
+        return data.getPersistentData().getList("casting_materials", NbtElement.COMPOUND_TYPE);
+    }
+
     // 绘制格子
     @Inject(method = "render", at = @At("TAIL"))
     public void renderMaterials(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
@@ -42,10 +64,10 @@ public abstract class InventoryScreenMixin extends AbstractInventoryScreen<Playe
         int startX = x + 43;
         int startY = y + 166 + 4;
 
-        IEntityDataSaver data = (IEntityDataSaver) this.client.player;
-        NbtList materials = data.getPersistentData().getList("casting_materials", NbtElement.COMPOUND_TYPE);
+        int maxMaterialSlots = getMaxMaterialSlots(this.client.player);
+        NbtList materials = getMaterialsList(this.client.player);
 
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < maxMaterialSlots; i++) {
             //int x = startX;
             //int y = startY + (i * 20);
             int x = startX + (i * 18);
@@ -97,8 +119,9 @@ public abstract class InventoryScreenMixin extends AbstractInventoryScreen<Playe
         //int startY = this.y + 7;
         int startX = x + 43;
         int startY = y + 166 + 4;
+        int maxMaterialSlots = getMaxMaterialSlots(this.client.player);
 
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < maxMaterialSlots; i++) {
             //int x = startX;
             //int y = startY + (i * 20);
             int x = startX + (i * 18);
@@ -134,8 +157,9 @@ public abstract class InventoryScreenMixin extends AbstractInventoryScreen<Playe
         //int startY = this.y + 7;
         int startX = x + 43;
         int startY = y + 166 + 4;
+        int maxMaterialSlots = getMaxMaterialSlots(this.client.player);
 
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < maxMaterialSlots; i++) {
             //int x = startX;
             //int y = startY + (i * 20);
             int x = startX + (i * 18);

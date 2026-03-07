@@ -180,6 +180,11 @@ public class ModMessages {
             server.execute(() -> {
                 if (!PacketUtils.isSkillUnlocked(player, skillId)) return;
 
+                // 检查目标槽位是否越界
+                int practiceLevel = PacketUtils.getSkillLevel(player, "practice_makes_perfect");
+                int maxSlots = 2 + practiceLevel;
+                if (slotIndex < 0 || slotIndex >= maxSlots) return;
+
                 IEntityDataSaver data = (IEntityDataSaver) player;
                 NbtCompound nbt = data.getPersistentData();
                 NbtList activeSlots = nbt.getList("active_skill_slots", NbtElement.COMPOUND_TYPE);
@@ -254,7 +259,9 @@ public class ModMessages {
         ServerPlayNetworking.registerGlobalReceiver(SWITCH_SLOT_ID, (server, player, handler, buf, responseSender) -> {
             int slotIndex = buf.readInt();
             server.execute(() -> {
-                if (slotIndex >= 0 && slotIndex < 5) {
+                int practiceLevel = PacketUtils.getSkillLevel(player, "practice_makes_perfect");
+                int maxSlots = 2 + practiceLevel;
+                if (slotIndex >= 0 && slotIndex < maxSlots) {
                     PacketUtils.setData(player, "selected_active_slot", slotIndex);
                 }
             });
@@ -308,6 +315,9 @@ public class ModMessages {
         ServerPlayNetworking.registerGlobalReceiver(MATERIAL_SLOT_CLICK_ID, (server, player, handler, buf, responseSender) -> {
             int slotIndex = buf.readInt();
             server.execute(() -> {
+                int maxMaterialSlots = 2 + PacketUtils.getSkillLevel(player, "alchemist");
+                if (slotIndex < 0 || slotIndex >= maxMaterialSlots) return;
+
                 IEntityDataSaver data = (IEntityDataSaver) player;
                 NbtCompound nbt = data.getPersistentData();
                 NbtList materials = nbt.getList("casting_materials", 10); // 10 = Compound
@@ -413,6 +423,10 @@ public class ModMessages {
         ServerPlayNetworking.registerGlobalReceiver(REDUCE_CD_REQUEST_ID, (server, player, handler, buf, responseSender) -> {
             int slotIndex = buf.readInt();
             server.execute(() -> {
+                // 检查是否越界
+                int maxMaterialSlots = 2 + PacketUtils.getSkillLevel(player, "alchemist");
+                if (slotIndex < 0 || slotIndex >= maxMaterialSlots) return;
+
                 IEntityDataSaver data = (IEntityDataSaver) player;
                 NbtCompound nbt = data.getPersistentData();
                 NbtList materials = nbt.getList("casting_materials", 10);
